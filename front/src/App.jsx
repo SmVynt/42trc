@@ -3,6 +3,7 @@ import MainLayout from './layouts/MainLayout'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
+import UserPage from './pages/UserPage'
 
 const App = () => {
   const router = createBrowserRouter(
@@ -11,6 +12,7 @@ const App = () => {
         <Route path='/' element={<MainLayout />}>
           <Route index element={<HomePage />} />
           <Route path='login' element={<LoginPage />} />
+          <Route path='user' element={<UserPage />} />
           <Route path='*' element={<NotFoundPage />} />
         </Route>
       </>

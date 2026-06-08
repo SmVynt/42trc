@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 const ALLOWED_SCHOOL_EMAIL_DOMAINS = (import.meta.env.VITE_ALLOWED_SCHOOL_EMAIL_DOMAINS ?? '42.fr,student.42.fr,student.42heilbronn.de')
@@ -32,8 +33,9 @@ const LoginPage = () => {
     if (typeof window === 'undefined') return ''
     return new URLSearchParams(window.location.search).get('token') || ''
   }, [])
+  const navigate = useNavigate()
 
-  useEffect(() => {
+    useEffect(() => {
     if (!pendingToken) return
 
     const confirmToken = async () => {
@@ -51,6 +53,15 @@ const LoginPage = () => {
         }
 
         setConfirmedUser(data.user)
+        if (data.token) {
+          try {
+            localStorage.setItem('authToken', data.token)
+          } catch (e) {
+            // ignore storage errors
+          }
+        }
+        // redirect to user page after successful confirmation
+        navigate('/user')
         setStatus({
           type: 'success',
           message: `Confirmed ${data.user?.email || 'your email'}. You are ready to continue.`,

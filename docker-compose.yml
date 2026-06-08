@@ -11,15 +11,11 @@ services:
   mongo:
     image: mongo:7
     restart: unless-stopped
+    command: ["mongod", "--bind_ip_all", "--noauth"]
     volumes:
       - mongo_data:/data/db
     networks:
       - transcendence
-    env_file:
-      - .env
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-example}
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -35,12 +31,8 @@ services:
     env_file:
       - .env
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
       PORT: "5000"
-      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/transcendence}
-      MONGO_USER: ${MONGO_USER:-${MONGO_INITDB_ROOT_USERNAME:-root}}
-      MONGO_PASS: ${MONGO_PASS:-${MONGO_INITDB_ROOT_PASSWORD:-example}}
-      JWT_SK: ${JWT_SK}
+      MONGO_URI: mongodb://mongo:27017/transcendence
     depends_on:
       mongo:
         condition: service_healthy

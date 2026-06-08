@@ -109,7 +109,8 @@ const confirmLogin = async (req, res) => {
             { email: payload.email },
             {
                 $setOnInsert: {
-                    username: payload.email.split('@')[0],
+                    // username should be the full email address per requirements
+                    username: payload.email,
                     email: payload.email,
                 },
                 $set: {
@@ -120,10 +121,18 @@ const confirmLogin = async (req, res) => {
             { upsert: true, new: true }
         );
 
+        // create a session token for the frontend to use
+        const sessionToken = jwt.sign(
+            { email: payload.email, purpose: 'session' },
+            process.env.JWT_SK,
+            { expiresIn: process.env.SESSION_EXPIRES_IN || '7d' }
+        );
+
         return res.status(200).json({
             message: 'Email confirmed.',
             verified: true,
             user,
+            token: sessionToken,
         });
     } catch (error) {
         console.error('Login confirmation failed', error);
@@ -134,7 +143,30 @@ const confirmLogin = async (req, res) => {
     }
 };
 
+const getMe = async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization || '';
+        const token = (authHeader.startsWith('Bearer ') && authHeader.slice(7)) || req.query.token || req.body.token;
+
+        if (!token) return res.status(401).json({ message: 'Missing auth token.' });
+
+        const payload = jwt.verify(token, process.env.JWT_SK);
+        if (payload.purpose !== 'session' || !payload.email) {
+            return res.status(401).json({ message: 'Invalid session token.' });
+        }
+
+        const user = await User.findOne({ email: payload.email }).lean();
+        if (!user) return res.status(404).json({ message: 'User not found.' });
+
+        return res.status(200).json({ user });
+    } catch (error) {
+        console.error('getMe failed', error);
+        return res.status(401).json({ message: 'Invalid or expired token.' });
+    }
+};
+
 module.exports = {
     requestLogin,
     confirmLogin,
+    getMe,
 };
