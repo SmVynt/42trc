@@ -1,0 +1,101 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+
+const linkStyle = {
+  padding: '10px 14px',
+  borderRadius: '12px',
+  color: '#e2e8f0',
+  transition: 'background-color 0.2s ease, color 0.2s ease',
+}
+
+const Navbar = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 720px)')
+
+    const syncViewport = () => {
+      setIsMobile(mediaQuery.matches)
+      if (!mediaQuery.matches) {
+        setIsMenuOpen(false)
+      }
+    }
+
+    syncViewport()
+    mediaQuery.addEventListener('change', syncViewport)
+
+    return () => {
+      mediaQuery.removeEventListener('change', syncViewport)
+    }
+  }, [])
+
+  const toggleMenu = () => {
+    setIsMenuOpen((current) => !current)
+  }
+
+  return (
+    <header style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(2, 6, 23, 0.72)', padding: '16px 24px', backdropFilter: 'blur(16px)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <Link to="/" style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#7dd3fc' }}>
+          42trc
+        </Link>
+
+        {!isMobile ? (
+          <nav aria-label="Primary navigation" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Link to="/" style={linkStyle}>
+              Home
+            </Link>
+            <Link to="/login" style={linkStyle}>
+              Login
+            </Link>
+          </nav>
+        ) : (
+          <button
+            type="button"
+            onClick={toggleMenu}
+            aria-expanded={isMenuOpen}
+            aria-controls="main-navigation"
+            aria-label="Toggle navigation menu"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(15, 23, 42, 0.92)',
+              color: '#f8fafc',
+              fontSize: '1.1rem',
+              cursor: 'pointer',
+            }}
+          >
+            <span aria-hidden="true">☰</span>
+          </button>
+        )}
+      </div>
+
+      {isMobile && isMenuOpen ? (
+        <nav id="main-navigation" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <Link
+            to="/"
+            onClick={() => setIsMenuOpen(false)}
+            style={linkStyle}
+          >
+            Home
+          </Link>
+          <Link
+            to="/login"
+            onClick={() => setIsMenuOpen(false)}
+            style={linkStyle}
+          >
+            Login
+          </Link>
+        </nav>
+      ) : null}
+    </header>
+  )
+}
+
+export default Navbar

@@ -13,7 +13,11 @@
     "type": "git",
     "url": "git+https://github.com/SmVynt/42trc.git"
   },
-  "keywords": ["42trc", "game", "backend"],
+  "keywords": [
+    "42trc",
+    "game",
+    "backend"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -27,6 +31,7 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.6.4",
+    "nodemailer": "^8.0.10",
     "socket.io": "^4.8.0"
   },
   "devDependencies": {

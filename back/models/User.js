@@ -12,7 +12,9 @@ const InventoryItemSchema = new mongoose.Schema({
 const UserSchema = new mongoose.Schema({
 	username: { type: String, required: true, unique: true, index: true },
 	intra: { type: String },
-	email: { type: String },
+	email: { type: String, unique: true, sparse: true, index: true },
+	emailVerifiedAt: { type: Date },
+	lastLoginAt: { type: Date },
 	passwordHash: { type: String },
 	inventory: { type: [InventoryItemSchema], default: [] },
 	stats: {

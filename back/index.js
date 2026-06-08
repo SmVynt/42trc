@@ -1,11 +1,13 @@
 //index.js
 require('dotenv').config();
+
+process.env.JWT_SK = process.env.JWT_SK || 'dev-secret'
+process.env.MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/transcendence'
+
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const roomRoutes = require('./routes/roomRoutes');
-const userRoutes = require('./routes/userRoutes');
-const socket = require('./controllers/socketioController');
+const authRoutes = require('./routes/authRoutes');
 const http = require('http');
 const app = express();
 
@@ -18,10 +20,7 @@ app.get('/',(req, res) => {
     res.send('Server works!');
 });
 
-// Rooms routes. All routes will be with the room sub-line
-app.use('/api/rooms', roomRoutes);
-// Users and items
-app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
 
 // Connect to MogoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -31,11 +30,8 @@ mongoose.connect(process.env.MONGO_URI)
 // HTTP server
 const server = http.createServer(app);
 
-// Socket.io initialization
-socket.init(server);
-
 //Port listening
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 });
