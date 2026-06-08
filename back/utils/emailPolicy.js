@@ -14,6 +14,7 @@ const isAllowedSchoolEmail = (email = '') => {
     const domain = getEmailDomain(email);
     if (!domain) return false;
 
+	console.log('Checking email domain:', domain);
     return allowedSchoolEmailDomains().some((allowedDomain) => (
         domain === allowedDomain || domain.endsWith(`.${allowedDomain}`)
     ));

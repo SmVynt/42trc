@@ -26,6 +26,10 @@ const app = express();
 // Using cors
 app.use(express.json());
 app.use(cors());
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.originalUrl}`);
+    next();
+});
 
 // Main route
 app.get('/',(req, res) => {

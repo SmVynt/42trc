@@ -1,6 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
+const ALLOWED_SCHOOL_EMAIL_DOMAINS = (import.meta.env.VITE_ALLOWED_SCHOOL_EMAIL_DOMAINS ?? '42.fr,student.42.fr,student.42heilbronn.de')
+  .split(',')
+  .map((domain) => domain.trim().toLowerCase())
+  .filter(Boolean)
+
+const getEmailDomain = (value = '') => {
+  const atIndex = value.lastIndexOf('@')
+  if (atIndex === -1) return ''
+  return value.slice(atIndex + 1).trim().toLowerCase()
+}
+
+const isAllowedSchoolEmail = (value = '') => {
+  const domain = getEmailDomain(value)
+  if (!domain) return false
+
+  return ALLOWED_SCHOOL_EMAIL_DOMAINS.some((allowedDomain) => (
+    domain === allowedDomain || domain.endsWith(`.${allowedDomain}`)
+  ))
+}
 
 const LoginPage = () => {
   const [email, setEmail] = useState('')
@@ -47,15 +66,23 @@ const LoginPage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+    setConfirmationLink('')
+
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (!isAllowedSchoolEmail(normalizedEmail)) {
+      setStatus({ type: 'error', message: 'This email is not a school email.' })
+      return
+    }
+
     setIsSubmitting(true)
     setStatus({ type: 'idle', message: '' })
-    setConfirmationLink('')
 
     try {
       const response = await fetch(`${API_BASE}/api/auth/login/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizedEmail }),
       })
 
       const data = await response.json()
