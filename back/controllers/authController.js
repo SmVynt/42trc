@@ -3,6 +3,8 @@ const nodemailer = require('nodemailer');
 const User = require('../models/User');
 const { isAllowedSchoolEmail, allowedSchoolEmailDomains } = require('../utils/emailPolicy');
 
+const FORTY_TWO_API_BASE = 'https://api.intra.42.fr';
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const buildMailer = () => {
@@ -165,8 +167,101 @@ const getMe = async (req, res) => {
     }
 };
 
+const handle42OAuthCallback = async (req, res) => {
+    const { code, state } = req.body;
+    const clientId = process.env.OAUTH_42_CLIENT_ID;
+    const clientSecret = process.env.OAUTH_42_CLIENT_SECRET;
+    const redirectUri = process.env.OAUTH_42_REDIRECT_URI || process.env.FRONTEND_URL || 'http://localhost:5173/login';
+
+    if (!clientId || !clientSecret) {
+        return res.status(500).json({ message: '42 OAuth is not configured on this server.' });
+    }
+
+    if (!code) {
+        return res.status(400).json({ message: 'Authorization code is required.' });
+    }
+
+    try {
+        const tokenResponse = await fetch(`${FORTY_TWO_API_BASE}/oauth/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                grant_type: 'authorization_code',
+                client_id: clientId,
+                client_secret: clientSecret,
+                code,
+                redirect_uri: redirectUri,
+                ...(state ? { state } : {}),
+            }),
+        });
+
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok) {
+            throw new Error(tokenData?.error_description || tokenData?.error || 'Could not exchange the authorization code.');
+        }
+
+        const profileResponse = await fetch(`${FORTY_TWO_API_BASE}/v2/me`, {
+            headers: {
+                Authorization: `Bearer ${tokenData.access_token}`,
+            },
+        });
+
+        const profile = await profileResponse.json();
+
+        if (!profileResponse.ok) {
+            throw new Error(profile?.message || 'Could not fetch the 42 user profile.');
+        }
+
+        const email = (profile.email || '').trim().toLowerCase();
+        if (!email || !isAllowedSchoolEmail(email)) {
+            return res.status(403).json({
+                message: 'Only approved school emails can access this project.',
+                allowedSchoolEmailDomains,
+            });
+        }
+
+        const username = (profile.login || email).trim().toLowerCase();
+        const user = await User.findOneAndUpdate(
+            { email },
+            {
+                $setOnInsert: {
+                    username,
+                    intra: profile.login || username,
+                    email,
+                },
+                $set: {
+                    emailVerifiedAt: new Date(),
+                    lastLoginAt: new Date(),
+                    intra: profile.login || username,
+                },
+            },
+            { upsert: true, new: true }
+        );
+
+        const sessionToken = jwt.sign(
+            { email, purpose: 'session' },
+            process.env.JWT_SK,
+            { expiresIn: process.env.SESSION_EXPIRES_IN || '7d' }
+        );
+
+        return res.status(200).json({
+            message: '42 OAuth login complete.',
+            user,
+            token: sessionToken,
+            profile,
+        });
+    } catch (error) {
+        console.error('42 OAuth callback failed', error);
+        return res.status(401).json({
+            message: error.message || 'The 42 authorization flow failed.',
+        });
+    }
+};
+
 module.exports = {
     requestLogin,
     confirmLogin,
     getMe,
+    handle42OAuthCallback,
 };
