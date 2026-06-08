@@ -2,13 +2,8 @@ node_modules
 .env
 .env.local
 dist
-coverage
+build
 npm-debug.log
 Dockerfile
 docker-compose.yml
 README.md
-node_modules
-npm-debug.log
-.env
-.git
-.gitignore

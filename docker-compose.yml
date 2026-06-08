@@ -1,3 +1,12 @@
+volumes:
+  mongo_data:
+    name: mongo_data
+
+networks:
+  transcendence:
+    name: transcendence
+    driver: bridge
+
 services:
   mongo:
     image: mongo:7
@@ -5,7 +14,12 @@ services:
     volumes:
       - mongo_data:/data/db
     networks:
-      - app
+      - transcendence
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-example}
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -18,16 +32,20 @@ services:
       context: ./back
       dockerfile: Dockerfile
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: "5000"
       MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/transcendence}
+      MONGO_USER: ${MONGO_USER:-${MONGO_INITDB_ROOT_USERNAME:-root}}
+      MONGO_PASS: ${MONGO_PASS:-${MONGO_INITDB_ROOT_PASSWORD:-example}}
       JWT_SK: ${JWT_SK}
     depends_on:
       mongo:
         condition: service_healthy
     networks:
-      - app
+      - transcendence
     expose:
       - "5000"
 
@@ -35,34 +53,13 @@ services:
     build:
       context: ./front
       dockerfile: Dockerfile
-      target: production
+      target: ${TRC_TARGET:-development}
     restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://backend:5000}
     depends_on:
       - backend
     ports:
-      - "${HTTP_PORT:-80}:80"
+      - "${HTTP_PORT:-80}:${FRONT_CONTAINER_PORT:-80}"
     networks:
-      - app
-
-  mongo-express:
-    image: mongo-express:latest
-    restart: unless-stopped
-    environment:
-      ME_CONFIG_MONGODB_URL: ${MONGO_URI:-mongodb://mongo:27017/transcendence}
-      ME_CONFIG_BASICAUTH_USERNAME: ${ME_USERNAME:-admin}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${ME_PASSWORD:?Set ME_PASSWORD in .env (mongo-express web UI)}
-      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
-    ports:
-      - "${MONGO_EXPRESS_BIND:-127.0.0.1}:${MONGO_EXPRESS_PORT:-8081}:8081"
-    depends_on:
-      mongo:
-        condition: service_healthy
-    networks:
-      - app
-
-networks:
-  app:
-    driver: bridge
-
-volumes:
-  mongo_data:
+      - transcendence

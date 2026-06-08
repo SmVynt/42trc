@@ -3,7 +3,7 @@ YELLOW			= \033[0;33m
 BLUE			= \033[0;34m
 RESET			= \033[0m
 
-PROJECT			= transcendance
+PROJECT			= transcendence
 BACK_DIR		= back
 FRONT_DIR		= front
 COMPOSE_FILE	= docker-compose.yml
@@ -17,17 +17,21 @@ BACK_DEV_PORT	= 5001
 FRONT_DEV_PORT	= 5173
 FRONT_API_URL	= http://localhost:5001
 
+TARGET_DEV		:= development
+TARGET_PROD		:= production
+
+
 all: install build
 
 help:
 	@echo "$(BLUE)$(PROJECT) available targets:$(RESET)"
 	@echo "  make install       Install dependencies for backend and frontend"
-	@echo "  make dev           Run backend and frontend in development mode"
+	@echo "  make dev           Run the Docker-based development stack"
 	@echo "  make build         Build the frontend and prepare production assets"
+	@echo "  make prod          Build production Docker image (Nginx)"
 	@echo "  make back-dev      Run the backend in development mode"
 	@echo "  make front-dev     Run the frontend in development mode"
-	@echo "  make dev           Run backend and frontend in development mode"
-	@echo "  make stop-dev      Stop the local backend and frontend dev servers"
+	@echo "  make stop          Stop the Docker-based development stack"
 	@echo "  make docker-up     Start the stack with Docker Compose"
 	@echo "  make docker-down   Stop the Docker Compose stack"
 	@echo "  make clean         Remove local node_modules folders"
@@ -61,22 +65,28 @@ front-preview:
 	@echo "$(YELLOW)Previewing frontend production build...$(RESET)"
 	@cd $(FRONT_DIR) && $(FRONT_PREVIEW)
 
-dev: stop-dev install
-	@echo "$(BLUE)Starting the full development stack...$(RESET)"
-	@$(MAKE) --no-print-directory -j2 back-dev front-dev BACK_DEV_PORT=$(BACK_DEV_PORT) FRONT_API_URL=$(FRONT_API_URL)
+dev: stop
+	@echo "$(BLUE)Starting the Docker-based development stack...$(RESET)"
+	@NODE_ENV=development HTTP_PORT=$(FRONT_DEV_PORT) FRONT_CONTAINER_PORT=$(FRONT_DEV_PORT) TRC_TARGET=$(TARGET_DEV) docker compose --env-file .env -f $(COMPOSE_FILE) up -d --build
 
-stop-dev:
-	@echo "$(YELLOW)Stopping local dev servers...$(RESET)"
+stop:
+	@echo "$(YELLOW)Stopping the Docker-based development stack...$(RESET)"
+	@docker compose --env-file .env -f $(COMPOSE_FILE) down --remove-orphans
 	@for port in $(BACK_DEV_PORT) $(FRONT_DEV_PORT); do \
 		pids=$$(ss -ltnp "( sport = :$$port )" 2>/dev/null | awk 'match($$0, /pid=([0-9]+)/, m) { print m[1] }' | sort -u); \
 		if [ -n "$$pids" ]; then \
 			kill $$pids 2>/dev/null || true; \
 		fi; \
 	done
-	@echo "$(GREEN)Local dev servers stopped.$(RESET)"
+	@echo "$(GREEN)Development stack stopped.$(RESET)"
 
 build: front-build
 	@echo "$(GREEN)Project build complete.$(RESET)"
+
+prod:
+	@echo "$(BLUE)Building production Docker image...$(RESET)"
+	@HTTP_PORT=80 FRONT_CONTAINER_PORT=80 TRC_TARGET=$(TARGET_PROD) docker compose --env-file .env -f $(COMPOSE_FILE) build frontend
+	@echo "$(GREEN)Production image build complete.$(RESET)"
 
 clean:
 	@echo "$(YELLOW)Removing backend dependencies...$(RESET)"
@@ -87,20 +97,29 @@ clean:
 
 fclean: clean
 	@echo "$(YELLOW)Stopping Docker Compose services...$(RESET)"
-	@docker compose -f $(COMPOSE_FILE) down --remove-orphans 2>/dev/null || true
+	@docker compose --env-file .env -f $(COMPOSE_FILE) down --remove-orphans 2>/dev/null || true
 	@echo "$(GREEN)Full cleanup complete.$(RESET)"
 
 docker-up:
 	@echo "$(YELLOW)Starting Docker Compose stack...$(RESET)"
-	@docker compose -f $(COMPOSE_FILE) up --build
+	@export TRC_TARGET=$(TARGET_PROD)
+	@docker compose --env-file .env -f $(COMPOSE_FILE) up --build
 
 docker-down:
 	@echo "$(YELLOW)Stopping Docker Compose stack...$(RESET)"
-	@docker compose -f $(COMPOSE_FILE) down --remove-orphans
+	@docker compose --env-file .env -f $(COMPOSE_FILE) down --remove-orphans
 
 docker-logs:
-	@docker compose -f $(COMPOSE_FILE) logs -f
+	@docker compose --env-file .env -f $(COMPOSE_FILE) logs -f
+
+backend-logs:
+	@echo "$(YELLOW)Tailing backend logs...$(RESET)"
+	@docker compose --env-file .env -f $(COMPOSE_FILE) logs -f --tail=200 backend
+
+frontend-logs:
+	@echo "$(YELLOW)Tailing frontend logs...$(RESET)"
+	@docker compose --env-file .env -f $(COMPOSE_FILE) logs -f --tail=200 frontend
 
 re: fclean all
 
-.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs re
+.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs re

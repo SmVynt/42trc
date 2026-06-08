@@ -41,6 +41,8 @@ const requestLogin = async (req, res) => {
 
     try {
         const normalizedEmail = email.trim().toLowerCase();
+        const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+        const isPreviewTransport = !hasSmtpConfig;
         const token = jwt.sign(
             { email: normalizedEmail, purpose: 'email-login' },
             process.env.JWT_SK,
@@ -77,7 +79,8 @@ const requestLogin = async (req, res) => {
         return res.status(200).json({
             message: 'Confirmation email prepared.',
             email: normalizedEmail,
-            confirmationUrl: process.env.NODE_ENV === 'development' ? confirmationUrl : undefined,
+            confirmationUrl: process.env.NODE_ENV !== 'production' || isPreviewTransport ? confirmationUrl : undefined,
+            deliveryMode: isPreviewTransport ? 'preview' : 'smtp',
             preview: mailResult.preview,
         });
     } catch (error) {

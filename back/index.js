@@ -2,7 +2,19 @@
 require('dotenv').config();
 
 process.env.JWT_SK = process.env.JWT_SK || 'dev-secret'
-process.env.MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/transcendence'
+
+// Build MONGO_URI from environment variables if not explicitly set.
+// Supports optional auth via MONGO_USER / MONGO_PASS (authSource=admin).
+const mongoHost = process.env.MONGO_HOST || 'mongo';
+const mongoPort = process.env.MONGO_PORT || '27017';
+const mongoDb = process.env.MONGO_DB || 'transcendence';
+if (!process.env.MONGO_URI) {
+    if (process.env.MONGO_USER && process.env.MONGO_PASS) {
+        process.env.MONGO_URI = `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_PASS}@${mongoHost}:${mongoPort}/${mongoDb}?authSource=admin`;
+    } else {
+        process.env.MONGO_URI = `mongodb://${mongoHost}:${mongoPort}/${mongoDb}`;
+    }
+}
 
 const express = require('express');
 const cors = require('cors');

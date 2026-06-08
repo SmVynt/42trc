@@ -1,9 +1,8 @@
-const allowedSchoolEmailDomains = (
-    process.env.ALLOWED_SCHOOL_EMAIL_DOMAINS || '42.fr,student.42.fr,student.42heilbronn.de'
-)
-    .split(',')
-    .map((domain) => domain.trim().toLowerCase())
-    .filter(Boolean);
+const allowedSchoolEmailDomains = () => {
+    return process.env.ALLOWED_SCHOOL_EMAIL_DOMAINS
+        ? process.env.ALLOWED_SCHOOL_EMAIL_DOMAINS.split(',')
+        : ['42.fr', 'student.42.fr', 'student.42heilbronn.de'];
+};
 
 const getEmailDomain = (email = '') => {
     const atIndex = email.lastIndexOf('@');
@@ -15,7 +14,7 @@ const isAllowedSchoolEmail = (email = '') => {
     const domain = getEmailDomain(email);
     if (!domain) return false;
 
-    return allowedSchoolEmailDomains.some((allowedDomain) => (
+    return allowedSchoolEmailDomains().some((allowedDomain) => (
         domain === allowedDomain || domain.endsWith(`.${allowedDomain}`)
     ));
 };
