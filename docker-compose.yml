@@ -47,7 +47,7 @@ services:
       dockerfile: Dockerfile
       target: ${TRC_TARGET:-development}
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://backend:5000}
+        VITE_API_URL: ${VITE_API_URL:-}
         VITE_42_CLIENT_ID: ${OAUTH_42_CLIENT_ID}
         VITE_42_REDIRECT_URI: ${OAUTH_42_REDIRECT_URI:-http://localhost:5173/login}
         VITE_42_SCOPE: ${OAUTH_42_SCOPE:-public}
@@ -55,7 +55,7 @@ services:
     depends_on:
       - backend
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://backend:5000}
+      VITE_API_URL: ${VITE_API_URL:-}
       VITE_42_CLIENT_ID: ${OAUTH_42_CLIENT_ID}
       VITE_42_REDIRECT_URI: ${OAUTH_42_REDIRECT_URI:-http://localhost:5173/login}
       VITE_42_SCOPE: ${OAUTH_42_SCOPE:-public}

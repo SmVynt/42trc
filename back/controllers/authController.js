@@ -27,6 +27,7 @@ const getMe = async (req, res) => {
 };
 
 const handle42OAuthCallback = async (req, res) => {
+	console.log('Received 42 OAuth callback with body:', req.body);
 	const { code, state } = req.body;
 	const clientId = process.env.OAUTH_42_CLIENT_ID;
 	const clientSecret = process.env.OAUTH_42_CLIENT_SECRET;
@@ -41,7 +42,7 @@ const handle42OAuthCallback = async (req, res) => {
 	}
 
 	try {
-		Console.log('Exchanging code for token with 42 API...');
+		console.log('-- Exchanging code for token with 42 API...');
 		const tokenResponse = await fetch(`${FORTY_TWO_API_BASE}/oauth/token`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -55,6 +56,7 @@ const handle42OAuthCallback = async (req, res) => {
 			}),
 		});
 
+		console.log('-- Token response status:', tokenResponse.status);
 		const tokenData = await tokenResponse.json();
 
 		if (!tokenResponse.ok) {
@@ -87,7 +89,6 @@ const handle42OAuthCallback = async (req, res) => {
 			{
 				$setOnInsert: {
 					username,
-					intra: profile.login || username,
 					email,
 				},
 				$set: {

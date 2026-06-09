@@ -7,6 +7,7 @@ const FORTY_TWO_CLIENT_ID = import.meta.env.VITE_42_CLIENT_ID ?? ''
 const FORTY_TWO_REDIRECT_URI = import.meta.env.VITE_42_REDIRECT_URI ?? (typeof window !== 'undefined' ? `${window.location.origin}/login` : 'http://localhost:5173/login')
 const FORTY_TWO_SCOPE = import.meta.env.VITE_42_SCOPE ?? 'public'
 const OAUTH_STATE_STORAGE_KEY = '42-oauth-state'
+const OAUTH_HANDLED_CODE_STORAGE_KEY = '42-oauth-handled-code'
 
 const createOAuthState = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -62,46 +63,54 @@ const LoginPage = () => {
 		}
 
 		const completeOAuthLogin = async () => {
+			const handledCode = sessionStorage.getItem(OAUTH_HANDLED_CODE_STORAGE_KEY) || ''
+			if (handledCode === code) {
+				return
+			}
+
+			sessionStorage.setItem(OAUTH_HANDLED_CODE_STORAGE_KEY, code)
 			setIsSubmitting(true)
-			//   console.log('Received OAuth callback with code:', code, 'and state:', state)
 			console.log('WHat was received from 42:', { code, state, error, errorDescription })
 			setStatus({ type: 'idle', message: 'Completing 42 sign-in...' })
 
-			//   try {
-			//     const response = await fetch(`${API_BASE}/api/auth/oauth/42/callback`, {
-			//       method: 'POST',
-			//       headers: { 'Content-Type': 'application/json' },
-			//       body: JSON.stringify({ code, state }),
-			//     })
+			try {
+				const callbackUrl = `${API_BASE}/api/auth/oauth/42/callback`
+				console.log('42 OAuth callback URL:', callbackUrl)
+				const response = await fetch(callbackUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ code, state }),
+				})
 
-			//     const data = await response.json()
+				const data = await response.json()
 
-			//     if (!response.ok) {
-			//       throw new Error(data?.message || 'Could not complete the 42 sign-in.')
-			//     }
+				if (!response.ok) {
+				throw new Error(data?.message || 'Could not complete the 42 sign-in.')
+				}
 
-			//     setConfirmedUser(data.user)
-			//     if (data.token) {
-			//       try {
-			//         localStorage.setItem('authToken', data.token)
-			//       } catch {
-			//         // ignore storage errors
-			//       }
-			//     }
+				setConfirmedUser(data.user)
+				if (data.token) {
+					try {
+						localStorage.setItem('authToken', data.token)
+					} catch {
+						// ignore storage errors
+					}
+				}
 
-			//     sessionStorage.removeItem(OAUTH_STATE_STORAGE_KEY)
-			//     window.history.replaceState({}, document.title, window.location.pathname)
-			//     setStatus({
-			//       type: 'success',
-			//       message: `Signed in as ${data.user?.email || 'your 42 account'}. Redirecting...`,
-			//     })
-			//     navigate('/user', { replace: true })
-			//   } catch (requestError) {
-			//     setStatus({ type: 'error', message: requestError.message })
-			//     window.history.replaceState({}, document.title, window.location.pathname)
-			//   } finally {
-			//     setIsSubmitting(false)
-			//   }
+				sessionStorage.removeItem(OAUTH_STATE_STORAGE_KEY)
+				window.history.replaceState({}, document.title, window.location.pathname)
+				setStatus({
+				type: 'success',
+				message: `Signed in as ${data.user?.email || 'your 42 account'}. Redirecting...`,
+				})
+				navigate('/user', { replace: true })
+			} catch (requestError) {
+				sessionStorage.removeItem(OAUTH_HANDLED_CODE_STORAGE_KEY)
+				setStatus({ type: 'error', message: requestError.message })
+				window.history.replaceState({}, document.title, window.location.pathname)
+			} finally {
+				setIsSubmitting(false)
+			}
 		}
 
 		completeOAuthLogin()
