@@ -68,6 +68,7 @@ front-preview:
 dev: stop
 	@echo "$(BLUE)Starting the Docker-based development stack...$(RESET)"
 	@NODE_ENV=development HTTP_PORT=$(FRONT_DEV_PORT) FRONT_CONTAINER_PORT=$(FRONT_DEV_PORT) TRC_TARGET=$(TARGET_DEV) docker compose --env-file .env -f $(COMPOSE_FILE) up -d --build
+	@echo "$(GREEN)Site is running. Link: http://localhost:$(FRONT_DEV_PORT)$(RESET)"
 
 stop:
 	@echo "$(YELLOW)Stopping the Docker-based development stack...$(RESET)"
