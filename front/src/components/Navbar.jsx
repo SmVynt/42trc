@@ -46,6 +46,9 @@ const Navbar = () => {
 			<Link to="/" style={linkStyle}>
 				Home
 			</Link>
+			<Link to="/store" style={linkStyle}>
+				Store
+			</Link>
 			<Link to="/user" style={linkStyle}>
 				User
 			</Link>
@@ -87,6 +90,13 @@ const Navbar = () => {
 			style={linkStyle}
 			>
 			Home
+			</Link>
+			<Link
+			to="/store"
+			onClick={() => setIsMenuOpen(false)}
+			style={linkStyle}
+			>
+			Store
 			</Link>
 			<Link
 			to="/user"
