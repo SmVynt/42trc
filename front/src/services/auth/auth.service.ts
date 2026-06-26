@@ -1,21 +1,14 @@
 import { http } from '../../api/http'
-import type { AuthResponse, User } from '../../types/auth'
+import type { User } from '../../types/user'
 
 export const authService = {
   async me(token: string): Promise<User> {
-    const res = await http<AuthResponse>('/api/auth/me', {
+    const res = await http<{ user: User }>('/api/auth/me', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     })
 
     return res.user
-  },
-
-  async oauth42(code: string, state: string): Promise<AuthResponse> {
-    return http<AuthResponse>('/api/auth/oauth/42/callback', {
-      method: 'POST',
-      body: JSON.stringify({ code, state }),
-    })
   },
 }
