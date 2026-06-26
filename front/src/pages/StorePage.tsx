@@ -1,8 +1,7 @@
 import { Suspense, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Float, Html, OrbitControls, useGLTF } from '@react-three/drei'
+import { Bounds, Center, Float, Html, OrbitControls, useGLTF } from '@react-three/drei'
 import { DoubleSide, MeshBasicMaterial } from 'three'
-import { StoreCard } from '../components/store/StoreCard'
 
 import bodyModelUrl from '../assets/models/hero/_body.glb?url'
 import faceModelUrl from '../assets/models/clothes/_face_01.glb?url'
@@ -50,9 +49,7 @@ const CATEGORY_SLOTS: CategorySlot[] = [
   { label: 'masks', title: 'masks', available: 2 },
 ]
 
-/* -----------------------------
-   3D helpers
------------------------------- */
+// -------------------- helpers --------------------
 
 function applyUnlitMaterial(scene: any) {
   const cloned = scene.clone(true)
@@ -76,7 +73,9 @@ function applyUnlitMaterial(scene: any) {
   return cloned
 }
 
-function AvatarPreview() {
+// -------------------- 3D Avatar --------------------
+
+function AvatarPreview({ item }: { item: StoreItem }) {
   const { scene: bodyScene } = useGLTF(bodyModelUrl)
   const { scene: faceScene } = useGLTF(faceModelUrl)
 
@@ -91,31 +90,21 @@ function AvatarPreview() {
   )
 }
 
-/* -----------------------------
-   preload (ВАЖНО — не удалять)
------------------------------- */
-
-useGLTF.preload(bodyModelUrl)
-useGLTF.preload(faceModelUrl)
-ITEMS.forEach((item) => useGLTF.preload(item.model))
-
-/* -----------------------------
-   Page
------------------------------- */
+// -------------------- Store Page --------------------
 
 const StorePage = (): JSX.Element => {
   const [selectedId, setSelectedId] = useState<string>(ITEMS[1].id)
 
-  const selectedItem = useMemo(() => {
+  const selectedItem = useMemo<StoreItem>(() => {
     return ITEMS.find((item) => item.id === selectedId) ?? ITEMS[0]
   }, [selectedId])
 
   const groupedItems = useMemo<GroupedItems>(() => {
-    return ITEMS.reduce<GroupedItems>((acc, item) => {
+    return ITEMS.reduce<GroupedItems>((groups, item) => {
       const key = item.category.toLowerCase()
-      acc[key] = acc[key] ?? []
-      acc[key].push(item)
-      return acc
+      groups[key] = groups[key] ?? []
+      groups[key].push(item)
+      return groups
     }, {})
   }, [])
 
@@ -131,23 +120,21 @@ const StorePage = (): JSX.Element => {
     >
       {/* HEADER */}
       <header style={{ display: 'grid', gap: 6 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 14 }}>
-          <h1 style={{ margin: 0, fontSize: '3rem', letterSpacing: '0.08em' }}>
-            Store
-          </h1>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
+          <h1 style={{ margin: 0 }}>Store</h1>
 
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '10px 16px',
-            borderRadius: 999,
-            border: '2px solid rgba(0,0,0,0.1)',
-            background: 'rgba(255,255,255,0.8)',
-            fontWeight: 800,
-          }}>
-            <span>◉</span>
-            <span>{COIN_BALANCE}</span>
+          <div
+            style={{
+              display: 'inline-flex',
+              gap: 10,
+              padding: '10px 16px',
+              borderRadius: 999,
+              border: '2px solid rgba(58,45,39,0.14)',
+              background: 'rgba(255,251,245,0.82)',
+              fontWeight: 800,
+            }}
+          >
+            ◉ {COIN_BALANCE} coins
           </div>
         </div>
       </header>
@@ -158,11 +145,10 @@ const StorePage = (): JSX.Element => {
           display: 'grid',
           gridTemplateColumns: '1.6fr 1fr',
           gap: 18,
-          height: 'min(700px, calc(100vh - 220px))',
         }}
       >
         {/* LEFT */}
-        <article style={{ overflowY: 'auto', padding: 20 }}>
+        <article>
           {CATEGORY_SLOTS.map((slot) => {
             const items = groupedItems[slot.label] ?? []
 
@@ -172,12 +158,26 @@ const StorePage = (): JSX.Element => {
 
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {items.map((item) => (
-                    <StoreCard
+                    <button
                       key={item.id}
-                      item={item}
-                      active={item.id === selectedItem.id}
-                      onSelect={() => setSelectedId(item.id)}
-                    />
+                      onClick={() => setSelectedId(item.id)}
+                      style={{
+                        padding: 10,
+                        borderRadius: 12,
+                        border:
+                          item.id === selectedItem.id
+                            ? '2px solid #ffb86b'
+                            : '1px solid rgba(0,0,0,0.2)',
+                        background:
+                          item.id === selectedItem.id
+                            ? '#fff3e0'
+                            : '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div>{item.name}</div>
+                      <div>{item.price}</div>
+                    </button>
                   ))}
                 </div>
               </section>
@@ -186,34 +186,26 @@ const StorePage = (): JSX.Element => {
         </article>
 
         {/* RIGHT */}
-        <aside style={{ display: 'grid', gridTemplateRows: '1fr auto', gap: 12 }}>
-          <div style={{ height: '100%', borderRadius: 24, overflow: 'hidden' }}>
-            <Canvas camera={{ position: [0, 0.3, 5.2], fov: 34 }}>
-              <color attach="background" args={['#2c1e52']} />
+        <aside style={{ height: 500 }}>
+          <Canvas camera={{ position: [0, 0.3, 5.2], fov: 34 }}>
+            <Suspense
+              fallback={
+                <Html center>
+                  Loading...
+                </Html>
+              }
+            >
+              <Float>
+                <AvatarPreview item={selectedItem} />
+              </Float>
+            </Suspense>
 
-              <Suspense
-                fallback={
-                  <Html center>
-                    Loading...
-                  </Html>
-                }
-              >
-                <Float>
-                  <AvatarPreview />
-                </Float>
-              </Suspense>
+            <OrbitControls />
+          </Canvas>
 
-              <OrbitControls
-                enablePan={false}
-                minDistance={4.4}
-                maxDistance={6.5}
-              />
-            </Canvas>
-          </div>
-
-          <div>
-            <div style={{ fontWeight: 800 }}>{selectedItem.name}</div>
-            <div>{selectedItem.price} coins</div>
+          <div style={{ marginTop: 12 }}>
+            <h3>{selectedItem.name}</h3>
+            <p>{selectedItem.price} coins</p>
           </div>
         </aside>
       </section>
@@ -222,3 +214,8 @@ const StorePage = (): JSX.Element => {
 }
 
 export default StorePage
+
+// preload
+useGLTF.preload(bodyModelUrl)
+useGLTF.preload(faceModelUrl)
+ITEMS.forEach((item) => useGLTF.preload(item.model))
