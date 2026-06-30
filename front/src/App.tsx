@@ -6,7 +6,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import UserPage from './pages/UserPage'
 import StorePage from './pages/StorePage'
 
-const App = () => {
+const App = (): JSX.Element => {
   const router = createBrowserRouter(
     createRoutesFromElements(
       <>
@@ -15,7 +15,7 @@ const App = () => {
           <Route path='login' element={<LoginPage />} />
           <Route path='user' element={<UserPage />} />
           <Route path='*' element={<NotFoundPage />} />
-		  <Route path='store' element={<StorePage />} />
+          <Route path='store' element={<StorePage />} />
         </Route>
       </>
     )

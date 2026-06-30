@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
+const { ItemCategory } = require('./Item');
 
 const InventoryItemSchema = new mongoose.Schema({
-	name: { type: String, required: true },
-	type: { type: String, default: 'misc' },
-	description: { type: String },
-	image: { type: String },
+	itemId: { type: String, required: true, index: true },
 	quantity: { type: Number, default: 1 },
+	equipped: { type: Boolean, default: false },
+	// Additional metadata can be stored here, that's not explicitly defined.
 	metadata: { type: mongoose.Schema.Types.Mixed }
 }, { _id: false });
 
@@ -15,13 +15,12 @@ const UserSchema = new mongoose.Schema({
 	email: { type: String, unique: true, sparse: true, index: true },
 	emailVerifiedAt: { type: Date },
 	lastLoginAt: { type: Date },
-	passwordHash: { type: String },
 	inventory: { type: [InventoryItemSchema], default: [] },
-	stats: {
-		gamesPlayed: { type: Number, default: 0 },
-		wins: { type: Number, default: 0 },
-		points: { type: Number, default: 0 }
-	}
+	coins: { type: Number, default: 0 },
+	equippedItems: { type: mongoose.Schema.Types.Mixed, default: {} },
+
+// Additional metadata can be stored here, that's not explicitly defined.
+	metadata: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true });
 
 const User = mongoose.model('User', UserSchema);

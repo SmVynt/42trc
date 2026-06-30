@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import FooterFixed from "../components/FooterFixed";
 
-const MainLayout = () => {
+const MainLayout = (): JSX.Element => {
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', color: '#e2e8f0' }}>
             <Navbar />

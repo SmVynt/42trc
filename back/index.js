@@ -14,6 +14,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 const http = require('http');
 const app = express();
 
@@ -31,6 +32,7 @@ app.get('/',(req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 // Connect to MogoDB
 mongoose.connect(process.env.MONGO_URI)
