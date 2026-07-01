@@ -1,5 +1,5 @@
 import { Suspense, useMemo, useState } from 'react'
-import { Game } from '../components/game/Game'
+import Game from '../components/game/Game'
 
 const GamePage = () : JSX.Element => {
 
