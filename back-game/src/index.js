@@ -13,15 +13,24 @@ const socketHandlers = require('./handlers/socketHandlers');
 
 const app = express();
 const httpServer = createServer(app);
+
+// Parse frontend URL to get origin (remove path/query)
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const frontendOrigin = new URL(frontendUrl).origin;
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5174',
-    methods: ['GET', 'POST']
+    origin: frontendOrigin,
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: frontendOrigin,
+  credentials: true
+}));
 app.use(express.json());
 
 // Initialize Services

@@ -121,6 +121,9 @@ frontend-logs:
 	@echo "$(YELLOW)Tailing frontend logs...$(RESET)"
 	@docker compose --env-file .env -f $(COMPOSE_FILE) logs -f --tail=200 frontend
 
+ps:
+	@docker compose --env-file .env -f $(COMPOSE_FILE) ps
+
 re: fclean all
 
-.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs re
+.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs ps re

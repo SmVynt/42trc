@@ -75,13 +75,18 @@ const Player = () => {
     }
   }, [])
 
+  const joinedRef = useRef(false)
+
   // Initialize socket connection
   useEffect(() => {
     const initSocket = async () => {
       try {
         await gameSocket.connect()
-        // Join room 1 with username (you can get this from auth)
-        gameSocket.joinRoom(1, `player_${gameSocket.playerId?.slice(0, 8)}`)
+        // Join room 1 with username (only once, prevent StrictMode double-call)
+        if (!joinedRef.current) {
+          joinedRef.current = true
+          gameSocket.joinRoom(1, `player_${gameSocket.playerId?.slice(0, 8)}`)
+        }
       } catch (error) {
         console.error('Failed to connect to game server:', error)
       }
