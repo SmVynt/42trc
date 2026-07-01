@@ -105,6 +105,7 @@ const Navbar = (): JSX.Element => {
 					<Link to="/store" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Store</Link>
 					<Link to="/user" onClick={() => setIsMenuOpen(false)} style={linkStyle}>User</Link>
 					<Link to="/login" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Login</Link>
+					{/* <Link to="/game" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Game</Link> */}
 				</nav>
 			) : null}
 		</header>

@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 import UserPage from './pages/UserPage'
 import StorePage from './pages/StorePage'
+import GamePage from './pages/GamePage'
 
 const App = (): JSX.Element => {
   const router = createBrowserRouter(
@@ -16,6 +17,7 @@ const App = (): JSX.Element => {
           <Route path='user' element={<UserPage />} />
           <Route path='*' element={<NotFoundPage />} />
           <Route path='store' element={<StorePage />} />
+		  <Route path='game' element={<GamePage />} />
         </Route>
       </>
     )
