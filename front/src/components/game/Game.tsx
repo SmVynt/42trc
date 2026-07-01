@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import Player from './Player'
+import { OtherPlayers } from './OtherPlayers'
 
 const World = () => {
   return (
@@ -24,14 +25,6 @@ const World = () => {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="gray" />
       </mesh>
-    </>
-  )
-}
-
-const OtherPlayers = () => {
-  return (
-    <>
-      {/* Remote players will be rendered here */}
     </>
   )
 }

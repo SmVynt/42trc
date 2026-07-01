@@ -1,9 +1,10 @@
+import React, { useEffect, useRef, useMemo } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
-import { useEffect, useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { CharacterControls } from './utils/characterControls'
 import { gameSocket } from '../../services/gameSocket'
+import { usePlayers } from '../../context/players.context'
 interface PlayerModelProps {
   controlsRef: React.MutableRefObject<CharacterControls | null>
 }
@@ -76,6 +77,7 @@ const Player = () => {
   }, [])
 
   const joinedRef = useRef(false)
+  const { addPlayer, updatePlayerPosition, setPlayersInRoom, removePlayer } = usePlayers()
 
   // Initialize socket connection
   useEffect(() => {
@@ -99,6 +101,43 @@ const Player = () => {
     }
   }, [])
 
+  // Listen for other players
+  useEffect(() => {
+    // When room players list is received
+    gameSocket.on('room:players', (players) => {
+      console.log('📍 Room players:', players)
+      // Filter out self and add others
+      const otherPlayers = players.filter((p: any) => p.id !== gameSocket.playerId)
+      setPlayersInRoom(otherPlayers)
+    })
+
+    // When a new player joins
+    gameSocket.on('player:joined', (data) => {
+      console.log('👤 Player joined:', data.playerId, data.username)
+      if (data.playerId !== gameSocket.playerId) {
+        addPlayer({
+          id: data.playerId,
+          username: data.username,
+          position: { x: 0, y: 0, z: 0 },
+          rotation: { y: 0 }
+        })
+      }
+    })
+
+    // When a player moves
+    gameSocket.on('player:moved', (data) => {
+      if (data.playerId !== gameSocket.playerId) {
+        updatePlayerPosition(data.playerId, data.position, data.rotation)
+      }
+    })
+
+    // When a player leaves
+    gameSocket.on('player:left', (data) => {
+      console.log('👋 Player left:', data.playerId)
+      removePlayer(data.playerId)
+    })
+  }, [])
+
   // Game loop - send updates to server
   useFrame((state, delta) => {
     if (controlsRef.current) {
@@ -109,7 +148,7 @@ const Player = () => {
         const pos = controlsRef.current.getPosition()
         gameSocket.sendMovement(
           { x: pos.x, y: pos.y, z: pos.z },
-          { y: controlsRef.current.model.quaternion.y }
+          { y: controlsRef.current.currentRotationY }
         )
       }
     }

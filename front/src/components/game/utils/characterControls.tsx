@@ -16,6 +16,7 @@ export class CharacterControls {
   walkDirection = new THREE.Vector3()
   rotateAngle = new THREE.Vector3(0, 1, 0)
   rotateQuaternion: THREE.Quaternion = new THREE.Quaternion()
+  currentRotationY: number = 0 // Track Y-axis rotation angle
 
   // State
   toggleRun: boolean = true
@@ -90,6 +91,7 @@ export class CharacterControls {
 	  this.walkDirection.normalize()
 
 	  const angle = Math.atan2(this.walkDirection.x, this.walkDirection.z)
+	  this.currentRotationY = angle // Save rotation angle for networking
 	  this.rotateQuaternion.setFromAxisAngle(this.rotateAngle, angle)
 	  this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.15)
 

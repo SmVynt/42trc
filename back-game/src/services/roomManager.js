@@ -84,6 +84,7 @@ class RoomManager {
     
     return Array.from(room.players.values()).map(player => ({
       id: player.id,
+      username: player.username || `player_${player.id.slice(0, 8)}`,
       position: player.position,
       rotation: player.rotation
     }));

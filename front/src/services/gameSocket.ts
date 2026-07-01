@@ -6,6 +6,7 @@ class GameSocket {
   constructor() {
     this.socket = null
     this.isConnected = false
+    this.isConnecting = false
     this.roomId = null
     this.playerId = null
     this.listeners = {}
@@ -13,6 +14,20 @@ class GameSocket {
 
   connect() {
     return new Promise((resolve, reject) => {
+      // Prevent multiple simultaneous connection attempts
+      if (this.isConnecting) {
+        console.log('⏳ Already connecting...')
+        return
+      }
+
+      if (this.isConnected) {
+        console.log('✅ Already connected')
+        resolve()
+        return
+      }
+
+      this.isConnecting = true
+
       try {
         this.socket = io(GAME_SERVER_URL, {
           reconnection: true,
@@ -24,6 +39,7 @@ class GameSocket {
         this.socket.on('connect', () => {
           console.log('✅ Connected to game server:', this.socket.id)
           this.isConnected = true
+          this.isConnecting = false
           this.playerId = this.socket.id
           resolve()
         })
@@ -31,10 +47,12 @@ class GameSocket {
         this.socket.on('disconnect', () => {
           console.log('❌ Disconnected from game server')
           this.isConnected = false
+          this.isConnecting = false
         })
 
         this.socket.on('error', (error) => {
           console.error('Socket error:', error)
+          this.isConnecting = false
           reject(error)
         })
 
@@ -46,6 +64,7 @@ class GameSocket {
         })
       } catch (error) {
         console.error('Connection error:', error)
+        this.isConnecting = false
         reject(error)
       }
     })
