@@ -10,6 +10,15 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --color-bg: #020617;
+  --color-bg-2: #0f172a;
+  --color-button-bg: #1e293b;
+  --color-button-hover-bg: #334155;
+  --color-text: #e2e8f0;
+  --color-accent: #38bdf8;
+  --color-selected: #fbbf24;
+
 }
 
 * {

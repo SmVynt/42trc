@@ -1,3 +1,6 @@
 .claude/
 data/
 .env
+ref/
+back-game-bckp/
+*_bckp*

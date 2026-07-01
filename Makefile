@@ -5,17 +5,21 @@ RESET			= \033[0m
 
 PROJECT			= transcendence
 BACK_DIR		= back
+BACK_GAME_DIR	= back-game
 FRONT_DIR		= front
 COMPOSE_FILE	= docker-compose.yml
 
 BACK_START		= npm start
 BACK_PROD		= npm start
+BACK_GAME_START	= go run .
 FRONT_DEV		= npm run dev
 FRONT_BUILD		= npm run build
 FRONT_PREVIEW	= npm run preview
 BACK_DEV_PORT	= 5001
+BACK_GAME_PORT	= 5001
 FRONT_DEV_PORT	= 5173
-FRONT_API_URL	= http://localhost:5001
+FRONT_API_URL	= http://localhost:5000
+GAME_API_URL	= http://localhost:5001
 
 TARGET_DEV		:= development
 TARGET_PROD		:= production
@@ -25,11 +29,12 @@ all: install build
 
 help:
 	@echo "$(BLUE)$(PROJECT) available targets:$(RESET)"
-	@echo "  make install       Install dependencies for backend and frontend"
+	@echo "  make install       Install dependencies for backend, game-server, and frontend"
 	@echo "  make dev           Run the Docker-based development stack"
 	@echo "  make build         Build the frontend and prepare production assets"
 	@echo "  make prod          Build production Docker image (Nginx)"
 	@echo "  make back-dev      Run the backend in development mode"
+	@echo "  make back-game-dev Run the game server in development mode (Go)"
 	@echo "  make front-dev     Run the frontend in development mode"
 	@echo "  make stop          Stop the Docker-based development stack"
 	@echo "  make docker-up     Start the stack with Docker Compose"
@@ -40,6 +45,8 @@ help:
 install:
 	@echo "$(YELLOW)Installing backend dependencies...$(RESET)"
 	@cd $(BACK_DIR) && npm install
+	@echo "$(YELLOW)Installing game-server dependencies...$(RESET)"
+	@cd $(BACK_GAME_DIR) && go mod download
 	@echo "$(YELLOW)Installing frontend dependencies...$(RESET)"
 	@cd $(FRONT_DIR) && npm install
 	@echo "$(GREEN)Dependencies installed.$(RESET)"
@@ -47,6 +54,10 @@ install:
 back-dev:
 	@echo "$(YELLOW)Starting backend in development mode...$(RESET)"
 	@cd $(BACK_DIR) && PORT=$(BACK_DEV_PORT) $(BACK_START)
+
+back-game-dev:
+	@echo "$(YELLOW)Starting game server in development mode (Go)...$(RESET)"
+	@cd $(BACK_GAME_DIR) && PORT=$(BACK_GAME_PORT) go run .
 
 back-prod:
 	@echo "$(YELLOW)Starting backend in production mode...$(RESET)"
@@ -60,6 +71,8 @@ front-build:
 	@echo "$(YELLOW)Building frontend...$(RESET)"
 	@cd $(FRONT_DIR) && $(FRONT_BUILD)
 	@echo "$(GREEN)Frontend build complete.$(RESET)"
+
+# cd /root/projects/42trc/front && npm run build 2>&1 | grep -E "✓|✗|error" && cd /root/projects/42trc && docker-compose restart frontend 2>&1 | tail -2
 
 front-preview:
 	@echo "$(YELLOW)Previewing frontend production build...$(RESET)"
@@ -121,6 +134,9 @@ frontend-logs:
 	@echo "$(YELLOW)Tailing frontend logs...$(RESET)"
 	@docker compose --env-file .env -f $(COMPOSE_FILE) logs -f --tail=200 frontend
 
+ps:
+	@docker compose --env-file .env -f $(COMPOSE_FILE) ps
+
 re: fclean all
 
-.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs re
+.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs ps re

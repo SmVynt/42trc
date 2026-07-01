@@ -4,8 +4,10 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 import UserPage from './pages/UserPage'
+import StorePage from './pages/StorePage'
+import GamePage from './pages/GamePage'
 
-const App = () => {
+const App = (): JSX.Element => {
   const router = createBrowserRouter(
     createRoutesFromElements(
       <>
@@ -14,6 +16,8 @@ const App = () => {
           <Route path='login' element={<LoginPage />} />
           <Route path='user' element={<UserPage />} />
           <Route path='*' element={<NotFoundPage />} />
+          <Route path='store' element={<StorePage />} />
+		  <Route path='game' element={<GamePage />} />
         </Route>
       </>
     )
