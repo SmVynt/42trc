@@ -36,6 +36,8 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
 
 const Player = () => {
   const keysPressed = useRef<Record<string, boolean>>({})
+  const lastMovementSendTime = useRef<number>(0)
+  const movementUpdateInterval = 50 // ms (20 updates per second)
   const controlsRef = useRef<CharacterControls | null>(null)
 
   // Keyboard input
@@ -77,7 +79,7 @@ const Player = () => {
   }, [])
 
   const joinedRef = useRef(false)
-  const { addPlayer, updatePlayerPosition, setPlayersInRoom, removePlayer } = usePlayers()
+  const { addPlayer, updatePlayerPosition, setPlayersInRoom, removePlayer, cleanupInactivePlayers } = usePlayers()
 
   // Initialize socket connection
   useEffect(() => {
@@ -119,7 +121,8 @@ const Player = () => {
           id: data.playerId,
           username: data.username,
           position: { x: 0, y: 0, z: 0 },
-          rotation: { y: 0 }
+          rotation: { y: 0 },
+          lastUpdateTime: Date.now()
         })
       }
     })
@@ -138,13 +141,25 @@ const Player = () => {
     })
   }, [])
 
+  // Cleanup inactive players every second (timeout: 3 seconds)
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      cleanupInactivePlayers(3000)
+    }, 1000)
+
+    return () => clearInterval(cleanupInterval)
+  }, [cleanupInactivePlayers])
+
   // Game loop - send updates to server
   useFrame((state, delta) => {
     if (controlsRef.current) {
       controlsRef.current.update(delta, keysPressed.current)
 
-      // Send movement to server every few frames (throttle)
-      if (Math.random() < 0.2) { // Send ~20% of frames (more frequent updates for smoother sync)
+      // Send movement 20 times per second (every 50ms)
+      const now = Date.now()
+      if (now - lastMovementSendTime.current >= movementUpdateInterval) {
+        lastMovementSendTime.current = now
+
         const pos = controlsRef.current.getPosition()
         gameSocket.sendMovement(
           { x: pos.x, y: pos.y, z: pos.z },

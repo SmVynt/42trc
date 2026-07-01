@@ -33,7 +33,7 @@ function OtherPlayerModel({ player }: { player: any }) {
   
   // Time-based interpolation
   const lastUpdateTime = useRef<number>(Date.now())
-  const interpolationDuration = useRef<number>(200) // ms - base interpolation time
+  const interpolationDuration = useRef<number>(50) // ms - matches send interval (20 updates/sec)
   const startTime = useRef<number>(Date.now())
 
   // Load player model
@@ -60,20 +60,12 @@ function OtherPlayerModel({ player }: { player: any }) {
     // Set new target
     targetPos.current.set(player.position.x, player.position.y, player.position.z)
     
-    // Calculate distance moved to determine interpolation speed
-    const distance = startPos.current.distanceTo(targetPos.current)
-    const playerSpeed = 6 // approximate movement speed in units/sec
-    const calculatedDuration = (distance / playerSpeed) * 1000 // convert to ms
-    
-    // Interpolation duration: use calculated duration but min 150ms, max 400ms
-    interpolationDuration.current = Math.max(150, Math.min(calculatedDuration, 400))
-    
     // Set target rotation from Y angle
     const targetQuaternion = new THREE.Quaternion()
     targetQuaternion.setFromAxisAngle(rotateAngle.current, player.rotation.y)
     targetRotation.current.copy(targetQuaternion)
     
-    // Reset interpolation timer
+    // Reset interpolation timer (fixed 50ms - matches network update interval)
     lastUpdateTime.current = Date.now()
     startTime.current = Date.now()
   }, [player.position, player.rotation])
