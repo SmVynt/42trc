@@ -5,6 +5,7 @@ const A = 'KeyA'
 const S = 'KeyS'
 const D = 'KeyD'
 const SHIFT = 'ShiftLeft'
+const SPACE = 'Space'
 const DIRECTIONS = [W, A, S, D]
 
 export class CharacterControls {
@@ -21,6 +22,13 @@ export class CharacterControls {
   walkVelocity = 5
   runVelocity = 8
 
+  // Jumping & Physics
+  verticalVelocity = 0
+  isOnGround = true
+  gravity = 30 // m/s²
+  jumpHeight = 2 // meters
+  jumpVelocity = Math.sqrt(2 * 30 * 2) // sqrt(2 * gravity * jumpHeight)
+
   // Fixed isometric camera (Hades-style)
   cameraDistance = 10
   cameraHeight = 8
@@ -34,6 +42,13 @@ export class CharacterControls {
 
   public switchRunToggle() {
     this.toggleRun = !this.toggleRun
+  }
+
+  public jump() {
+    if (this.isOnGround) {
+      this.verticalVelocity = this.jumpVelocity
+      this.isOnGround = false
+    }
   }
 
   private updateCameraPosition() {
@@ -84,6 +99,17 @@ export class CharacterControls {
       const moveZ = this.walkDirection.z * velocity * delta
       this.model.position.x += moveX
       this.model.position.z += moveZ
+    }
+
+    // Apply gravity
+    this.verticalVelocity -= this.gravity * delta
+    this.model.position.y += this.verticalVelocity * delta
+
+    // Check if on ground
+    if (this.model.position.y <= 0) {
+      this.model.position.y = 0
+      this.verticalVelocity = 0
+      this.isOnGround = true
     }
 
     this.updateCameraPosition()

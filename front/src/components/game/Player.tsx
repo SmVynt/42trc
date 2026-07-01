@@ -2,8 +2,8 @@ import { useThree, useFrame } from '@react-three/fiber'
 import { useEffect, useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
-import { CharacterControls } from '../../utils/characterControls'
-
+import { CharacterControls } from './utils/characterControls'
+import { gameSocket } from '../../services/gameSocket'
 interface PlayerModelProps {
   controlsRef: React.MutableRefObject<CharacterControls | null>
 }
@@ -41,14 +41,20 @@ const Player = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const code = e.code
-      
+
       // Prevent default for game keys
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft'].includes(code)) {
         e.preventDefault()
       }
-      
+
       if (!keysPressed.current[code]) {
         keysPressed.current[code] = true
+
+        // Jump on space key press
+        if (code === 'Space' && controlsRef.current) {
+          controlsRef.current.jump()
+        }
+
         console.log('🔴 Key DOWN:', code)
       }
     }
@@ -69,10 +75,38 @@ const Player = () => {
     }
   }, [])
 
-  // Game loop
+  // Initialize socket connection
+  useEffect(() => {
+    const initSocket = async () => {
+      try {
+        await gameSocket.connect()
+        // Join room 1 with username (you can get this from auth)
+        gameSocket.joinRoom(1, `player_${gameSocket.playerId?.slice(0, 8)}`)
+      } catch (error) {
+        console.error('Failed to connect to game server:', error)
+      }
+    }
+
+    initSocket()
+
+    return () => {
+      // Don't disconnect on unmount, keep connection alive
+    }
+  }, [])
+
+  // Game loop - send updates to server
   useFrame((state, delta) => {
     if (controlsRef.current) {
       controlsRef.current.update(delta, keysPressed.current)
+
+      // Send movement to server every few frames (throttle)
+      if (Math.random() < 0.1) { // Send ~10% of frames (reduce network traffic)
+        const pos = controlsRef.current.getPosition()
+        gameSocket.sendMovement(
+          { x: pos.x, y: pos.y, z: pos.z },
+          { y: controlsRef.current.model.quaternion.y }
+        )
+      }
     }
   })
 
