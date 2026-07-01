@@ -144,7 +144,7 @@ const Player = () => {
       controlsRef.current.update(delta, keysPressed.current)
 
       // Send movement to server every few frames (throttle)
-      if (Math.random() < 0.1) { // Send ~10% of frames (reduce network traffic)
+      if (Math.random() < 0.2) { // Send ~20% of frames (more frequent updates for smoother sync)
         const pos = controlsRef.current.getPosition()
         gameSocket.sendMovement(
           { x: pos.x, y: pos.y, z: pos.z },

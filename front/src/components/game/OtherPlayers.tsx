@@ -21,17 +21,20 @@ function OtherPlayerModel({ player }: { player: any }) {
   const meshRef = useRef<THREE.Group>(null)
   const modelRef = useRef<THREE.Group>(null)
   
-  // Current position for interpolation
-  const currentPos = useRef<THREE.Vector3>(new THREE.Vector3(player.position.x, player.position.y, player.position.z))
+  // Start position (where we were)
+  const startPos = useRef<THREE.Vector3>(new THREE.Vector3(player.position.x, player.position.y, player.position.z))
+  // Target position (where we're going)
   const targetPos = useRef<THREE.Vector3>(new THREE.Vector3(player.position.x, player.position.y, player.position.z))
   
-  // Current rotation for interpolation
-  const currentRotation = useRef<THREE.Quaternion>(new THREE.Quaternion())
+  // Rotation
+  const startRotation = useRef<THREE.Quaternion>(new THREE.Quaternion())
   const targetRotation = useRef<THREE.Quaternion>(new THREE.Quaternion())
   const rotateAngle = useRef<THREE.Vector3>(new THREE.Vector3(0, 1, 0))
   
-  // Interpolation speed
-  const lerpSpeed = 0.1 // 0-1, higher = faster interpolation
+  // Time-based interpolation
+  const lastUpdateTime = useRef<number>(Date.now())
+  const interpolationDuration = useRef<number>(200) // ms - base interpolation time
+  const startTime = useRef<number>(Date.now())
 
   // Load player model
   const { scene } = useGLTF('/assets/models/hero/_body.glb')
@@ -50,24 +53,49 @@ function OtherPlayerModel({ player }: { player: any }) {
 
   // Update target position/rotation when player data changes
   useEffect(() => {
+    // Remember where we were coming from
+    startPos.current.copy(targetPos.current)
+    startRotation.current.copy(targetRotation.current)
+    
+    // Set new target
     targetPos.current.set(player.position.x, player.position.y, player.position.z)
+    
+    // Calculate distance moved to determine interpolation speed
+    const distance = startPos.current.distanceTo(targetPos.current)
+    const playerSpeed = 6 // approximate movement speed in units/sec
+    const calculatedDuration = (distance / playerSpeed) * 1000 // convert to ms
+    
+    // Interpolation duration: use calculated duration but min 150ms, max 400ms
+    interpolationDuration.current = Math.max(150, Math.min(calculatedDuration, 400))
     
     // Set target rotation from Y angle
     const targetQuaternion = new THREE.Quaternion()
     targetQuaternion.setFromAxisAngle(rotateAngle.current, player.rotation.y)
     targetRotation.current.copy(targetQuaternion)
+    
+    // Reset interpolation timer
+    lastUpdateTime.current = Date.now()
+    startTime.current = Date.now()
   }, [player.position, player.rotation])
 
-  // Smooth interpolation each frame
+  // Smooth time-based interpolation each frame
   useFrame(() => {
     if (meshRef.current) {
+      const now = Date.now()
+      const elapsed = now - startTime.current
+      
+      // Calculate progress 0-1
+      let t = Math.min(1, elapsed / interpolationDuration.current)
+      
       // Lerp position
-      currentPos.current.lerp(targetPos.current, lerpSpeed)
-      meshRef.current.position.copy(currentPos.current)
+      const interpolatedPos = new THREE.Vector3()
+      interpolatedPos.lerpVectors(startPos.current, targetPos.current, t)
+      meshRef.current.position.copy(interpolatedPos)
 
       // Slerp rotation
-      currentRotation.current.slerp(targetRotation.current, lerpSpeed)
-      meshRef.current.quaternion.copy(currentRotation.current)
+      const interpolatedRotation = new THREE.Quaternion()
+      THREE.Quaternion.slerp(startRotation.current, targetRotation.current, interpolatedRotation, t)
+      meshRef.current.quaternion.copy(interpolatedRotation)
     }
   })
 
