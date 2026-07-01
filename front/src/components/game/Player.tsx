@@ -1,5 +1,5 @@
 import { useThree, useFrame } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { CharacterControls } from '../../utils/characterControls'
@@ -11,31 +11,26 @@ interface PlayerModelProps {
 const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
   const { scene } = useGLTF('/assets/models/hero/_body.glb')
-  const clonedSceneRef = useRef<THREE.Group | null>(null)
   const { camera } = useThree()
 
-  // Initialize model and CharacterControls
+  // Initialize CharacterControls with the group
   useEffect(() => {
-    console.log('PlayerModel useEffect - scene loaded:', scene, 'type:', scene.constructor.name)
-    
-    if (groupRef.current) {
-      // Clone scene once
-      if (!clonedSceneRef.current) {
-        const cloned = scene.clone(true) as THREE.Group
-        console.log('Adding cloned model to group, cloned:', cloned)
-        groupRef.current.add(cloned)
-        clonedSceneRef.current = cloned
-      }
-
-      // Initialize controls
-      if (!controlsRef.current) {
-        console.log('Initializing CharacterControls with groupRef:', groupRef.current)
-        controlsRef.current = new CharacterControls(groupRef.current, camera)
-      }
+    if (groupRef.current && !controlsRef.current) {
+      controlsRef.current = new CharacterControls(groupRef.current, camera)
+      console.log('✅ CharacterControls initialized')
     }
-  }, [scene, camera, controlsRef])
+  }, [camera, controlsRef])
 
-  return <group ref={groupRef} position={[0, 0, 0]} />
+  // Clone the scene for rendering
+  const clonedScene = useMemo(() => {
+    return scene.clone(true)
+  }, [scene])
+
+  return (
+    <group ref={groupRef} position={[0, 0, 0]}>
+      <primitive object={clonedScene} />
+    </group>
+  )
 }
 
 const Player = () => {
@@ -45,10 +40,24 @@ const Player = () => {
   // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      keysPressed.current[e.key.toLowerCase()] = true
+      const code = e.code
+      
+      // Prevent default for game keys
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft'].includes(code)) {
+        e.preventDefault()
+      }
+      
+      if (!keysPressed.current[code]) {
+        keysPressed.current[code] = true
+        console.log('🔴 Key DOWN:', code)
+      }
     }
     const handleKeyUp = (e: KeyboardEvent) => {
-      keysPressed.current[e.key.toLowerCase()] = false
+      const code = e.code
+      if (keysPressed.current[code]) {
+        keysPressed.current[code] = false
+        console.log('🟢 Key UP:', code)
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -64,7 +73,6 @@ const Player = () => {
   useFrame((state, delta) => {
     if (controlsRef.current) {
       controlsRef.current.update(delta, keysPressed.current)
-      console.log('Frame update - position:', controlsRef.current.getPosition())
     }
   })
 

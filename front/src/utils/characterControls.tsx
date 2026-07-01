@@ -1,10 +1,10 @@
 import * as THREE from 'three'
 
-const W = 'w'
-const A = 'a'
-const S = 's'
-const D = 'd'
-const SHIFT = 'shift'
+const W = 'KeyW'
+const A = 'KeyA'
+const S = 'KeyS'
+const D = 'KeyD'
+const SHIFT = 'ShiftLeft'
 const DIRECTIONS = [W, A, S, D]
 
 export class CharacterControls {
@@ -51,22 +51,23 @@ export class CharacterControls {
   public update(delta: number, keysPressed: Record<string, boolean>) {
     const directionPressed = DIRECTIONS.some((key) => keysPressed[key] == true)
 
+    this.walkDirection.set(0, 0, 0)
 
     if (keysPressed[W]) {
-      this.walkDirection.x -= Math.sin(this.cameraAngle)
-      this.walkDirection.z -= Math.cos(this.cameraAngle)
-    }
-    if (keysPressed[S]) {
       this.walkDirection.x += Math.sin(this.cameraAngle)
       this.walkDirection.z += Math.cos(this.cameraAngle)
     }
-    if (keysPressed[D]) {
-      this.walkDirection.x += Math.cos(this.cameraAngle)
-      this.walkDirection.z -= Math.sin(this.cameraAngle)
+    if (keysPressed[S]) {
+      this.walkDirection.x -= Math.sin(this.cameraAngle)
+      this.walkDirection.z -= Math.cos(this.cameraAngle)
     }
-    if (keysPressed[A]) {
+    if (keysPressed[D]) {
       this.walkDirection.x -= Math.cos(this.cameraAngle)
       this.walkDirection.z += Math.sin(this.cameraAngle)
+    }
+    if (keysPressed[A]) {
+      this.walkDirection.x += Math.cos(this.cameraAngle)
+      this.walkDirection.z -= Math.sin(this.cameraAngle)
     }
 
     if (this.walkDirection.length() > 0) {
