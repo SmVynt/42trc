@@ -118,7 +118,7 @@ export class CharacterControls {
 	  this.isOnGround = true
 	}
 
-	this.updateCameraPosition()
+	// this.updateCameraPosition()
   }
 
   public getPosition(): THREE.Vector3 {

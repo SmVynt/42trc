@@ -95,7 +95,7 @@ function OtherPlayerModel({ player }: { player: any }) {
     <group ref={meshRef} position={[player.position.x, player.position.y, player.position.z]}>
       <group ref={modelRef} />
       {/* Username label - below player, always facing camera */}
-      <Billboard position={[0, -0.5, 0]} scale={0.5}>
+      <Billboard position={[0, 2.5, 0]} scale={0.5}>
         <mesh>
           <planeGeometry args={[1.5, 0.4]} />
           <meshBasicMaterial map={createTextTexture(player.username)} transparent />

@@ -70,14 +70,12 @@ services:
     restart: unless-stopped
     environment:
       PORT: "5001"
-      NODE_ENV: ${NODE_ENV:-development}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-42trc_game}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5174}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       postgres:
         condition: service_healthy

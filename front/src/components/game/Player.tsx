@@ -40,6 +40,22 @@ const Player = () => {
   const movementUpdateInterval = 50 // ms (20 updates per second)
   const controlsRef = useRef<CharacterControls | null>(null)
 
+  // Send heartbeat every 1 second to prevent being marked as inactive
+  useEffect(() => {
+    const heartbeatInterval = setInterval(() => {
+      if (controlsRef.current && gameSocket.playerId) {
+        const pos = controlsRef.current.getPosition()
+        gameSocket.sendMovement(
+          { x: pos.x, y: pos.y, z: pos.z },
+          { y: controlsRef.current.currentRotationY }
+        )
+        console.log('Heartbeat sent')
+      }
+    }, 1000) // Send every second
+
+    return () => clearInterval(heartbeatInterval)
+  }, [])
+
   // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -106,10 +122,12 @@ const Player = () => {
   // Listen for other players
   useEffect(() => {
     // When room players list is received
-    gameSocket.on('room:players', (players) => {
-      console.log('📍 Room players:', players)
+    gameSocket.on('room:players', (data) => {
+      console.log('📍 Room players:', data)
+      // Extract players array from message
+      const playersArray = Array.isArray(data) ? data : data.players || []
       // Filter out self and add others
-      const otherPlayers = players.filter((p: any) => p.id !== gameSocket.playerId)
+      const otherPlayers = playersArray.filter((p: any) => p.id !== gameSocket.playerId)
       setPlayersInRoom(otherPlayers)
     })
 
@@ -155,7 +173,8 @@ const Player = () => {
     if (controlsRef.current) {
       controlsRef.current.update(delta, keysPressed.current)
 
-      // Send movement 20 times per second (every 50ms)
+      // Send movement/heartbeat 20 times per second (every 50ms) or whenever position changes
+      // This also serves as heartbeat to prevent players from being removed as inactive
       const now = Date.now()
       if (now - lastMovementSendTime.current >= movementUpdateInterval) {
         lastMovementSendTime.current = now

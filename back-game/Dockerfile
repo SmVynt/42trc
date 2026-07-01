@@ -1,22 +1,33 @@
-FROM node:22-alpine
+# Build stage
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
+# Copy go mod files
+COPY go.mod go.sum ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Download dependencies
+RUN go mod download
 
 # Copy source code
-COPY src ./src
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o game-server .
+
+# Runtime stage
+FROM alpine:latest
+
+# Install ca-certificates for HTTPS
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /app
+
+# Copy the binary from builder
+COPY --from=builder /app/game-server .
 
 # Expose port
 EXPOSE 5001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
-
-# Start server
-CMD ["npm", "start"]
+# Run the application
+CMD ["./game-server"]
