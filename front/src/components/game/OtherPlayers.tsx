@@ -20,17 +20,17 @@ export function OtherPlayers() {
 function OtherPlayerModel({ player }: { player: any }) {
   const meshRef = useRef<THREE.Group>(null)
   const modelRef = useRef<THREE.Group>(null)
-  
+
   // Start position (where we were)
   const startPos = useRef<THREE.Vector3>(new THREE.Vector3(player.position.x, player.position.y, player.position.z))
   // Target position (where we're going)
   const targetPos = useRef<THREE.Vector3>(new THREE.Vector3(player.position.x, player.position.y, player.position.z))
-  
+
   // Rotation
   const startRotation = useRef<THREE.Quaternion>(new THREE.Quaternion())
   const targetRotation = useRef<THREE.Quaternion>(new THREE.Quaternion())
   const rotateAngle = useRef<THREE.Vector3>(new THREE.Vector3(0, 1, 0))
-  
+
   // Time-based interpolation
   const lastUpdateTime = useRef<number>(Date.now())
   const interpolationDuration = useRef<number>(50) // ms - matches send interval (20 updates/sec)
@@ -56,15 +56,15 @@ function OtherPlayerModel({ player }: { player: any }) {
     // Remember where we were coming from
     startPos.current.copy(targetPos.current)
     startRotation.current.copy(targetRotation.current)
-    
+
     // Set new target
     targetPos.current.set(player.position.x, player.position.y, player.position.z)
-    
+
     // Set target rotation from Y angle
     const targetQuaternion = new THREE.Quaternion()
     targetQuaternion.setFromAxisAngle(rotateAngle.current, player.rotation.y)
     targetRotation.current.copy(targetQuaternion)
-    
+
     // Reset interpolation timer (fixed 50ms - matches network update interval)
     lastUpdateTime.current = Date.now()
     startTime.current = Date.now()
@@ -75,18 +75,18 @@ function OtherPlayerModel({ player }: { player: any }) {
     if (meshRef.current) {
       const now = Date.now()
       const elapsed = now - startTime.current
-      
+
       // Calculate progress 0-1
       let t = Math.min(1, elapsed / interpolationDuration.current)
-      
+
       // Lerp position
       const interpolatedPos = new THREE.Vector3()
       interpolatedPos.lerpVectors(startPos.current, targetPos.current, t)
       meshRef.current.position.copy(interpolatedPos)
 
       // Slerp rotation
-      const interpolatedRotation = new THREE.Quaternion()
-      THREE.Quaternion.slerp(startRotation.current, targetRotation.current, interpolatedRotation, t)
+      const interpolatedRotation = startRotation.current.clone()
+      interpolatedRotation.slerp(targetRotation.current, t)
       meshRef.current.quaternion.copy(interpolatedRotation)
     }
   })

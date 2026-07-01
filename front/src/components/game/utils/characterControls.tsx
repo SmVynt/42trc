@@ -31,8 +31,8 @@ export class CharacterControls {
   jumpVelocity = 0 // calculated in constructor
 
   // Fixed isometric camera (Hades-style)
-  cameraDistance = 10
-  cameraHeight = 8
+  cameraDistance = 5
+  cameraHeight = 2
   cameraAngle = Math.PI / 4 // 45 degrees
 
   constructor(model: THREE.Mesh | THREE.Group, camera: THREE.Camera) {
