@@ -61,6 +61,8 @@ front-build:
 	@cd $(FRONT_DIR) && $(FRONT_BUILD)
 	@echo "$(GREEN)Frontend build complete.$(RESET)"
 
+# cd /root/projects/42trc/front && npm run build 2>&1 | grep -E "✓|✗|error" && cd /root/projects/42trc && docker-compose restart frontend 2>&1 | tail -2
+
 front-preview:
 	@echo "$(YELLOW)Previewing frontend production build...$(RESET)"
 	@cd $(FRONT_DIR) && $(FRONT_PREVIEW)

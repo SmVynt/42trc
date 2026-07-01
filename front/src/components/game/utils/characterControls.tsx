@@ -31,8 +31,8 @@ export class CharacterControls {
   jumpVelocity = 0 // calculated in constructor
 
   // Fixed isometric camera (Hades-style)
-  cameraDistance = 5
-  cameraHeight = 2
+  cameraDistance = 7
+  cameraHeight = 4
   cameraAngle = Math.PI / 4 // 45 degrees
 
   constructor(model: THREE.Mesh | THREE.Group, camera: THREE.Camera) {
@@ -91,9 +91,12 @@ export class CharacterControls {
 	  this.walkDirection.normalize()
 
 	  const angle = Math.atan2(this.walkDirection.x, this.walkDirection.z)
-	  this.currentRotationY = angle // Save rotation angle for networking
 	  this.rotateQuaternion.setFromAxisAngle(this.rotateAngle, angle)
 	  this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.15)
+
+	  // Save current rotation AFTER rotateTowards (not target rotation!)
+	  const euler = new THREE.Euler().setFromQuaternion(this.model.quaternion, 'YXZ')
+	  this.currentRotationY = euler.y
 
 	  const velocity = keysPressed[SHIFT] ? this.runVelocity * 1.5 :
 					   directionPressed && this.toggleRun ? this.runVelocity : this.walkVelocity
