@@ -133,7 +133,7 @@ const Player = () => {
   useEffect(() => {
     // When room players list is received
     gameSocket.on('room:players', (data) => {
-      console.log('📍 Room players:', data)
+      console.log('Room players:', data)
       // Extract players array from message
       const playersArray = Array.isArray(data) ? data : data.players || []
       // Filter out self and add others
@@ -143,7 +143,7 @@ const Player = () => {
 
     // When a new player joins
     gameSocket.on('player:joined', (data) => {
-      console.log('👤 Player joined:', data.playerId, data.username)
+      console.log('Player joined:', data.playerId, data.username)
       if (data.playerId !== gameSocket.playerId) {
         addPlayer({
           id: data.playerId,
@@ -159,14 +159,14 @@ const Player = () => {
     // When a player moves
     gameSocket.on('player:moved', (data) => {
       if (data.playerId !== gameSocket.playerId) {
-        console.log('Player moved:', data.playerId, data.position, data.rotation, data.state)
+        // console.log('Player moved:', data.playerId, data.position, data.rotation, data.state)
         updatePlayerPosition(data.playerId, data.position, data.rotation, data.state)
       }
     })
 
     // When a player leaves
     gameSocket.on('player:left', (data) => {
-      console.log('👋 Player left:', data.playerId)
+      console.log('Player left:', data.playerId)
       removePlayer(data.playerId)
     })
   }, [])

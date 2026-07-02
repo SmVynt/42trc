@@ -6,10 +6,10 @@ type PlayerState uint8
 
 const (
 	PlayerStateIdle PlayerState = iota
-	PlayerStateWalking
-	PlayerStateRunning
-	PlayerStateJumping
-	PlayerStateSitting
+	PlayerStateWalk
+	PlayerStateRun
+	PlayerStateJump
+	PlayerStateSit
 )
 
 // Position represents 3D coordinates
@@ -26,22 +26,22 @@ type Rotation struct {
 
 // Player represents a game player
 type Player struct {
-	ID        string    `json:"id"`
-	Username  string    `json:"username"`
-	Position  Position  `json:"position"`
-	Rotation  Rotation  `json:"rotation"`
-	State     string    `json:"state"`
-	JoinedAt  time.Time `json:"joinedAt"`
-	RoomID    int       `json:"roomId"`
+	ID       string    `json:"id"`
+	Username string    `json:"username"`
+	Position Position  `json:"position"`
+	Rotation Rotation  `json:"rotation"`
+	State    string    `json:"state"`
+	JoinedAt time.Time `json:"joinedAt"`
+	RoomID   int       `json:"roomId"`
 }
 
 // Room represents a game room
 type Room struct {
-	ID        int       `json:"id"`
-	Name      string    `json:"name"`
-	Players   map[string]*Player
-	CreatedAt time.Time `json:"createdAt"`
-	MaxPlayers int      `json:"maxPlayers"`
+	ID         int    `json:"id"`
+	Name       string `json:"name"`
+	Players    map[string]*Player
+	CreatedAt  time.Time `json:"createdAt"`
+	MaxPlayers int       `json:"maxPlayers"`
 }
 
 // WebSocket Messages
@@ -70,8 +70,8 @@ type ChatData struct {
 
 // Response types
 type PlayerJoinedEvent struct {
-	PlayerId     string    `json:"playerId"`
-	Username     string    `json:"username"`
+	PlayerId      string    `json:"playerId"`
+	Username      string    `json:"username"`
 	PlayersInRoom []*Player `json:"playersInRoom"`
 }
 

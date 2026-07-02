@@ -62,19 +62,19 @@ var codeToEvent = map[int]string{
 }
 
 var playerStateToCode = map[string]uint8{
-	"idle":    uint8(models.PlayerStateIdle),
-	"walking": uint8(models.PlayerStateWalking),
-	"running": uint8(models.PlayerStateRunning),
-	"jumping": uint8(models.PlayerStateJumping),
-	"sitting": uint8(models.PlayerStateSitting),
+	"idle": uint8(models.PlayerStateIdle),
+	"walk": uint8(models.PlayerStateWalk),
+	"run":  uint8(models.PlayerStateRun),
+	"jump": uint8(models.PlayerStateJump),
+	"sit":  uint8(models.PlayerStateSit),
 }
 
 var codeToPlayerState = map[uint8]string{
-	uint8(models.PlayerStateIdle):    "idle",
-	uint8(models.PlayerStateWalking): "walking",
-	uint8(models.PlayerStateRunning): "running",
-	uint8(models.PlayerStateJumping): "jumping",
-	uint8(models.PlayerStateSitting): "sitting",
+	uint8(models.PlayerStateIdle): "idle",
+	uint8(models.PlayerStateWalk): "walk",
+	uint8(models.PlayerStateRun):  "run",
+	uint8(models.PlayerStateJump): "jump",
+	uint8(models.PlayerStateSit):  "sit",
 }
 
 func encodeGameMessage(message interface{}) ([]byte, error) {

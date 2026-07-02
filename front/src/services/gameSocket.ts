@@ -28,12 +28,12 @@ class GameSocket {
     return new Promise((resolve, reject) => {
       // Prevent multiple simultaneous connection attempts
       if (this.isConnecting) {
-        console.log('⏳ Already connecting...')
+        console.log('Already connecting...')
         return
       }
 
       if (this.isConnected) {
-        console.log('✅ Already connected')
+        console.log('Already connected')
         resolve()
         return
       }
@@ -43,12 +43,12 @@ class GameSocket {
       try {
         // Convert HTTP URL to WebSocket URL
         const wsUrl = GAME_SERVER_BASE.replace(/^http/, 'ws') + '/ws'
-        console.log('🔌 Connecting to:', wsUrl)
+        console.log('Connecting to:', wsUrl)
 
         this.ws = new WebSocket(wsUrl)
 
         this.ws.onopen = () => {
-          console.log('✅ Connected to game server:', this.playerId)
+          console.log('Connected to game server:', this.playerId)
           this.isConnected = true
           this.isConnecting = false
           this.reconnectAttempts = 0

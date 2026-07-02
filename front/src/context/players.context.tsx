@@ -6,7 +6,7 @@ export interface OtherPlayer {
   position: { x: number; y: number; z: number }
   rotation: { y: number }
   lastUpdateTime: number // Track when player was last updated
-  state: 'idle' | 'walking' | 'running' | 'jumping' | 'sitting'
+  state: 'idle' | 'walk' | 'run' | 'jump' | 'sit'
 }
 
 interface PlayersContextType {
@@ -55,7 +55,7 @@ export function PlayersProvider({ children }: { children: React.ReactNode }) {
       const updated = new Map(prev)
       for (const [playerId, player] of updated) {
         if (now - player.lastUpdateTime > timeoutMs) {
-          console.log(`🗑️ Removing inactive player: ${playerId}`)
+          console.log(`Removing inactive player: ${playerId}`)
           updated.delete(playerId)
         }
       }

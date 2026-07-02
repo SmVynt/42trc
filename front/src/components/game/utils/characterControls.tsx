@@ -69,7 +69,7 @@ export class CharacterControls {
 	if (this.isOnGround) {
 	  this.verticalVelocity = this.jumpVelocity
 	  this.isOnGround = false
-	  this.playStateAnimation('jumping')
+	  this.playStateAnimation('jump')
 	}
   }
 
@@ -129,18 +129,18 @@ export class CharacterControls {
 	  let clampWhenFinished = false
 
 	  switch (nextState) {
-	    case 'jumping':
+	    case 'jump':
 	      nextAction = this.findAction(['jump'])
 	      loop = THREE.LoopOnce
 	      clampWhenFinished = true
 	      break
-	    case 'running':
+	    case 'run':
 	      nextAction = this.findAction(['run'])
 	      break
-	    case 'walking':
+	    case 'walk':
 	      nextAction = this.findAction(['walk'])
 	      break
-	    case 'sitting':
+	    case 'sit':
 	      nextAction = this.findAction(['sit'])
 	      break
 	    case 'idle':
@@ -219,10 +219,10 @@ export class CharacterControls {
 	}
 
 	if (!this.isOnGround) {
-	  this.playStateAnimation('jumping')
+	  this.playStateAnimation('jump')
 	} else if (this.walkDirection.length() > 0) {
 	  const isRunning = keysPressed[SHIFT] ? true : this.toggleRun
-	  this.playStateAnimation(isRunning ? 'running' : 'walking')
+	  this.playStateAnimation(isRunning ? 'run' : 'walk')
 	} else {
 	  this.playStateAnimation('idle')
 	}

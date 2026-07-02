@@ -1,4 +1,4 @@
-export type GamePlayerState = 'idle' | 'walking' | 'running' | 'jumping' | 'sitting'
+export type GamePlayerState = 'idle' | 'walk' | 'run' | 'jump' | 'sit'
 
 export type GameVector3 = { x: number; y: number; z: number }
 export type GameRotation = { y: number }
@@ -46,18 +46,18 @@ type WireMessage = {
 
 const PLAYER_STATE_TO_CODE: Record<GamePlayerState, number> = {
   idle: 0,
-  walking: 1,
-  running: 2,
-  jumping: 3,
-  sitting: 4,
+  walk: 1,
+  run: 2,
+  jump: 3,
+  sit: 4,
 }
 
 const CODE_TO_PLAYER_STATE: Record<number, GamePlayerState> = {
   0: 'idle',
-  1: 'walking',
-  2: 'running',
-  3: 'jumping',
-  4: 'sitting',
+  1: 'walk',
+  2: 'run',
+  3: 'jump',
+  4: 'sit',
 }
 
 const eventToCode: Record<string, number> = {

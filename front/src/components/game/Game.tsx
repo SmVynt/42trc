@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import Player from './Player'
 import { OtherPlayers } from './OtherPlayers'
+import { GameConfig } from './utils/gameConfig'
 
 const World = () => {
   return (
@@ -31,7 +32,7 @@ const World = () => {
 
 const Game = (): JSX.Element => {
   return (
-    <Canvas>
+    <Canvas camera={{ position: [0, 2, 5], fov: GameConfig.CAMERA_FOV }}>
       <Suspense fallback={null}>
         <Player />
         <World />
