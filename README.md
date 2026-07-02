@@ -18,6 +18,6 @@ The game world is designed as a warm shared space where players can gather close
 
 - Frontend: React, Three.js
 - Backend: Node.js
-- Database: MongoDB
+- Database: PostgreSQL
 
 
