@@ -1,30 +1,39 @@
 import React, { useEffect, useRef, useMemo } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useGLTF } from '@react-three/drei'
+import { useAnimations, useGLTF } from '@react-three/drei'
+import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { CharacterControls } from './utils/characterControls'
 import { gameSocket } from '../../services/gameSocket'
 import { usePlayers } from '../../context/players.context'
+import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
 interface PlayerModelProps {
   controlsRef: React.MutableRefObject<CharacterControls | null>
 }
 
 const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
-  const { scene } = useGLTF('/assets/models/hero/_body.glb')
+  const { scene, animations } = useGLTF(bodyModelUrl)
   const { camera } = useThree()
+  const { actions } = useAnimations(animations, groupRef)
 
   // Initialize CharacterControls with the group
   useEffect(() => {
     if (groupRef.current && !controlsRef.current) {
-      controlsRef.current = new CharacterControls(groupRef.current, camera)
+      controlsRef.current = new CharacterControls(groupRef.current, camera, actions)
       console.log('✅ CharacterControls initialized')
     }
-  }, [camera, controlsRef])
+  }, [actions, camera, controlsRef])
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.setAnimations(actions)
+    }
+  }, [actions, controlsRef])
 
   // Clone the scene for rendering
   const clonedScene = useMemo(() => {
-    return scene.clone(true)
+    return skeletonClone(scene)
   }, [scene])
 
   return (
@@ -47,7 +56,8 @@ const Player = () => {
         const pos = controlsRef.current.getPosition()
         gameSocket.sendMovement(
           { x: pos.x, y: pos.y, z: pos.z },
-          { y: controlsRef.current.currentRotationY }
+          { y: controlsRef.current.currentRotationY },
+          controlsRef.current.getState()
         )
         console.log('Heartbeat sent')
       }
@@ -140,6 +150,7 @@ const Player = () => {
           username: data.username,
           position: { x: 0, y: 0, z: 0 },
           rotation: { y: 0 },
+          state: 'idle',
           lastUpdateTime: Date.now()
         })
       }
@@ -148,7 +159,8 @@ const Player = () => {
     // When a player moves
     gameSocket.on('player:moved', (data) => {
       if (data.playerId !== gameSocket.playerId) {
-        updatePlayerPosition(data.playerId, data.position, data.rotation)
+        console.log('Player moved:', data.playerId, data.position, data.rotation, data.state)
+        updatePlayerPosition(data.playerId, data.position, data.rotation, data.state)
       }
     })
 
@@ -182,7 +194,8 @@ const Player = () => {
         const pos = controlsRef.current.getPosition()
         gameSocket.sendMovement(
           { x: pos.x, y: pos.y, z: pos.z },
-          { y: controlsRef.current.currentRotationY }
+          { y: controlsRef.current.currentRotationY },
+          controlsRef.current.getState()
         )
       }
     }

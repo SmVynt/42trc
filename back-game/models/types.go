@@ -2,6 +2,16 @@ package models
 
 import "time"
 
+type PlayerState uint8
+
+const (
+	PlayerStateIdle PlayerState = iota
+	PlayerStateWalking
+	PlayerStateRunning
+	PlayerStateJumping
+	PlayerStateSitting
+)
+
 // Position represents 3D coordinates
 type Position struct {
 	X float32 `json:"x"`
@@ -20,6 +30,7 @@ type Player struct {
 	Username  string    `json:"username"`
 	Position  Position  `json:"position"`
 	Rotation  Rotation  `json:"rotation"`
+	State     string    `json:"state"`
 	JoinedAt  time.Time `json:"joinedAt"`
 	RoomID    int       `json:"roomId"`
 }

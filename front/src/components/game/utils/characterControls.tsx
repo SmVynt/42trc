@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import { GameConfig } from './gameConfig'
+import type { GamePlayerState } from './gameCodec'
 
 const W = 'KeyW'
 const A = 'KeyA'
@@ -11,6 +13,9 @@ const DIRECTIONS = [W, A, S, D]
 export class CharacterControls {
   model: THREE.Mesh | THREE.Group
   camera: THREE.Camera
+	animations: Record<string, THREE.AnimationAction | null> = {}
+	private currentAction: THREE.AnimationAction | null = null
+	private currentState: GamePlayerState = 'idle'
 
   // Movement
   walkDirection = new THREE.Vector3()
@@ -20,27 +25,41 @@ export class CharacterControls {
 
   // State
   toggleRun: boolean = true
-  walkVelocity = 5
-  runVelocity = 8
+  walkVelocity = GameConfig.WALK_VELOCITY
+  runVelocity = GameConfig.RUN_VELOCITY
 
   // Jumping & Physics
   verticalVelocity = 0
   isOnGround = true
-  gravity = 30 // m/s²
-  jumpHeight = 2 // meters
-  jumpVelocity = 0 // calculated in constructor
+  gravity = GameConfig.GRAVITY
+  jumpHeight = GameConfig.JUMP_HEIGHT
+  jumpVelocity = 0
 
-  // Fixed isometric camera (Hades-style)
-  cameraDistance = 7
-  cameraHeight = 4
-  cameraAngle = Math.PI / 4 // 45 degrees
+  // Fixed isometric camera
+  cameraDistance = GameConfig.CAMERA_DISTANCE
+  cameraHeight = GameConfig.CAMERA_HEIGHT
+  cameraAngle = GameConfig.CAMERA_ANGLE
 
-  constructor(model: THREE.Mesh | THREE.Group, camera: THREE.Camera) {
+	constructor(model: THREE.Mesh | THREE.Group, camera: THREE.Camera, animations?: Record<string, THREE.AnimationAction | null>) {
 	this.model = model
 	this.camera = camera
+	if (animations) {
+	  this.animations = animations
+	}
 	this.jumpVelocity = Math.sqrt(2 * this.gravity * this.jumpHeight)
 	this.updateCameraPosition()
+	this.playStateAnimation('idle')
   }
+
+	public setAnimations(animations: Record<string, THREE.AnimationAction | null>) {
+	  this.animations = animations
+	  this.currentAction = null
+	  this.playStateAnimation(this.currentState)
+	}
+
+	public getState(): GamePlayerState {
+	  return this.currentState
+	}
 
   public switchRunToggle() {
 	this.toggleRun = !this.toggleRun
@@ -50,8 +69,89 @@ export class CharacterControls {
 	if (this.isOnGround) {
 	  this.verticalVelocity = this.jumpVelocity
 	  this.isOnGround = false
+	  this.playStateAnimation('jumping')
 	}
   }
+
+	private findAction(candidates: string[]) {
+	  const directKeys = candidates
+	    .map((candidate) => candidate.toLowerCase())
+	    .filter((candidate, index, array) => array.indexOf(candidate) === index)
+
+	  const entries = Object.entries(this.animations).filter(([, action]) => action !== null) as Array<[string, THREE.AnimationAction]>
+	  if (entries.length === 0) {
+	    return null
+	  }
+
+	  for (const candidate of directKeys) {
+	    const direct = this.animations[candidate]
+	    if (direct) {
+	      return direct
+	    }
+	  }
+
+	  const normalizedCandidates = directKeys
+
+	  const byKey = entries.find(([key]) => normalizedCandidates.some((candidate) => key.toLowerCase().includes(candidate)))
+	  if (byKey) {
+	    return byKey[1]
+	  }
+
+	  const byClipName = entries.find(([, action]) => {
+	    const clipName = action.getClip().name.toLowerCase()
+	    return normalizedCandidates.some((candidate) => clipName.includes(candidate))
+	  })
+
+	  return byClipName?.[1] ?? entries[0][1]
+	}
+
+	private playAction(action: THREE.AnimationAction | null, loop: THREE.AnimationActionLoopStyles = THREE.LoopRepeat, clampWhenFinished = false) {
+	  if (!action || this.currentAction === action) {
+	    return
+	  }
+
+	  if (this.currentAction) {
+	    this.currentAction.fadeOut(0.15)
+	  }
+
+	  action.reset()
+	  action.enabled = true
+	  action.clampWhenFinished = clampWhenFinished
+	  action.setLoop(loop, loop === THREE.LoopOnce ? 1 : Infinity)
+	  action.fadeIn(0.15).play()
+	  this.currentAction = action
+	}
+
+	private playStateAnimation(state: GamePlayerState) {
+	  const nextState = state
+	  let nextAction: THREE.AnimationAction | null = null
+	  let loop: THREE.AnimationActionLoopStyles = THREE.LoopRepeat
+	  let clampWhenFinished = false
+
+	  switch (nextState) {
+	    case 'jumping':
+	      nextAction = this.findAction(['jump'])
+	      loop = THREE.LoopOnce
+	      clampWhenFinished = true
+	      break
+	    case 'running':
+	      nextAction = this.findAction(['run'])
+	      break
+	    case 'walking':
+	      nextAction = this.findAction(['walk'])
+	      break
+	    case 'sitting':
+	      nextAction = this.findAction(['sit'])
+	      break
+	    case 'idle':
+	    default:
+	      nextAction = this.findAction(['idle'])
+	      break
+	  }
+
+	  this.currentState = nextState
+	  this.playAction(nextAction, loop, clampWhenFinished)
+	}
 
   private updateCameraPosition() {
 	const modelPos = this.model.position
@@ -118,7 +218,16 @@ export class CharacterControls {
 	  this.isOnGround = true
 	}
 
-	// this.updateCameraPosition()
+	if (!this.isOnGround) {
+	  this.playStateAnimation('jumping')
+	} else if (this.walkDirection.length() > 0) {
+	  const isRunning = keysPressed[SHIFT] ? true : this.toggleRun
+	  this.playStateAnimation(isRunning ? 'running' : 'walking')
+	} else {
+	  this.playStateAnimation('idle')
+	}
+
+	this.updateCameraPosition()
   }
 
   public getPosition(): THREE.Vector3 {

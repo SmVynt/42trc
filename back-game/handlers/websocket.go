@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
@@ -17,7 +16,7 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // In production, validate origin properly
+		return true
 	},
 }
 
@@ -30,7 +29,7 @@ type Hub struct {
 
 	roomManager  *services.RoomManager
 	playerSvc    *services.PlayerService
-	playerConns  map[string]*Client // playerId -> connection
+	playerConns  map[string]*Client
 	playerConnMu sync.RWMutex
 }
 
@@ -75,7 +74,6 @@ func (h *Hub) Run() {
 			delete(h.playerConns, client.playerID)
 			h.playerConnMu.Unlock()
 
-			// Remove from room
 			if client.roomID > 0 {
 				h.BroadcastToRoom(client.roomID, map[string]interface{}{
 					"event":    "player:left",
@@ -108,7 +106,7 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &Client{
-		playerID: conn.RemoteAddr().String(), // temp ID, will be updated on join
+		playerID: conn.RemoteAddr().String(),
 		conn:     conn,
 		send:     make(chan interface{}, 256),
 		hub:      h,
@@ -141,7 +139,13 @@ func (c *Client) readPump() {
 			break
 		}
 
-		c.handleMessage(message)
+		decodedMessage, err := decodeGameMessage(message)
+		if err != nil {
+			log.Printf("❌ JSON unmarshal error: %v", err)
+			continue
+		}
+
+		c.handleMessage(decodedMessage)
 	}
 }
 
@@ -161,15 +165,21 @@ func (c *Client) writePump() {
 				return
 			}
 
-			w, err := c.conn.NextWriter(websocket.TextMessage)
+			writer, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				return
 			}
 
-			data, _ := json.Marshal(message)
-			w.Write(data)
+			data, err := encodeGameMessage(message)
+			if err != nil {
+				return
+			}
 
-			if err := w.Close(); err != nil {
+			if _, err := writer.Write(data); err != nil {
+				return
+			}
+
+			if err := writer.Close(); err != nil {
 				return
 			}
 
@@ -182,82 +192,66 @@ func (c *Client) writePump() {
 	}
 }
 
-func (c *Client) handleMessage(message []byte) {
-	var msg map[string]interface{}
-	if err := json.Unmarshal(message, &msg); err != nil {
-		log.Printf("❌ JSON unmarshal error: %v", err)
-		return
-	}
-
-	event := msg["event"].(string)
+func (c *Client) handleMessage(msg map[string]interface{}) {
+	event, _ := msg["event"].(string)
 
 	switch event {
 	case "player:join":
 		c.handlePlayerJoin(msg)
-
 	case "player:move":
 		c.handlePlayerMove(msg)
-
 	case "player:action":
 		c.handlePlayerAction(msg)
-
 	case "room:getState":
 		c.handleGetRoomState(msg)
-
 	case "room:chat":
 		c.handleChat(msg)
-
 	case "ping":
 		c.send <- map[string]interface{}{
 			"event":     "pong",
 			"timestamp": time.Now().UnixMilli(),
 		}
-
 	default:
 		log.Printf("⚠️ Unknown event: %s", event)
 	}
 }
 
 func (c *Client) handlePlayerJoin(msg map[string]interface{}) {
-	roomID := int(msg["roomId"].(float64))
-	username := msg["username"].(string)
+	roomID := asInt(msg["roomId"])
+	username := asString(msg["username"])
+	playerID := asString(msg["playerId"])
+	if playerID == "" {
+		playerID = c.playerID
+	}
 
 	log.Printf("[Handler] Player joining room %d as %s", roomID, username)
 
-	// Create room if doesn't exist
 	if err := c.hub.playerSvc.GetRoom(roomID); err != nil {
 		c.hub.playerSvc.CreateRoom(roomID, "Room "+string(rune(roomID)), 4)
 	}
 
-	// Create/update player in database
-	playerID := c.playerID
 	c.hub.playerSvc.CreatePlayer(playerID, username, roomID)
 
 	c.playerID = playerID
 	c.roomID = roomID
 
-	// Update connections map
 	c.hub.playerConnMu.Lock()
 	c.hub.playerConns[playerID] = c
 	c.hub.playerConnMu.Unlock()
 
-	// Create player object
 	player := &models.Player{
 		ID:       playerID,
 		Username: username,
 		RoomID:   roomID,
 		Position: models.Position{X: 0, Y: 0, Z: 0},
 		Rotation: models.Rotation{Y: 0},
+		State:    "idle",
 		JoinedAt: time.Now(),
 	}
 
-	// Add to room manager
 	c.hub.roomManager.AddPlayerToRoom(roomID, roomID, player)
-
-	// Get all players in room
 	playersInRoom := c.hub.roomManager.GetRoomPlayers(roomID)
 
-	// Broadcast to room that new player joined
 	c.hub.BroadcastToRoom(roomID, map[string]interface{}{
 		"event":         "player:joined",
 		"playerId":      playerID,
@@ -265,7 +259,6 @@ func (c *Client) handlePlayerJoin(msg map[string]interface{}) {
 		"playersInRoom": playersInRoom,
 	}, nil)
 
-	// Send current players to new player
 	c.send <- map[string]interface{}{
 		"event":   "room:players",
 		"players": playersInRoom,
@@ -279,34 +272,34 @@ func (c *Client) handlePlayerMove(msg map[string]interface{}) {
 		return
 	}
 
-	posData := msg["position"].(map[string]interface{})
-	rotData := msg["rotation"].(map[string]interface{})
+	positionData, _ := msg["position"].(map[string]interface{})
+	rotationData, _ := msg["rotation"].(map[string]interface{})
+	state := asString(msg["state"])
 
 	position := models.Position{
-		X: float32(posData["x"].(float64)),
-		Y: float32(posData["y"].(float64)),
-		Z: float32(posData["z"].(float64)),
+		X: float32(asFloat32(positionData["x"])),
+		Y: float32(asFloat32(positionData["y"])),
+		Z: float32(asFloat32(positionData["z"])),
 	}
-	rotation := models.Rotation{
-		Y: float32(rotData["y"].(float64)),
-	}
+	rotation := models.Rotation{Y: float32(asFloat32(rotationData["y"]))}
 
-	// Update in memory
 	c.hub.roomManager.UpdatePlayerPosition(c.playerID, position)
 	c.hub.roomManager.UpdatePlayerRotation(c.playerID, rotation)
+	if state != "" {
+		c.hub.roomManager.UpdatePlayerState(c.playerID, state)
+	}
 
-	// Update in database (async)
 	go func() {
 		c.hub.playerSvc.UpdatePlayerPosition(c.playerID, position.X, position.Y, position.Z)
 		c.hub.playerSvc.UpdatePlayerRotation(c.playerID, rotation.Y)
 	}()
 
-	// Broadcast to other players
 	c.hub.BroadcastToRoom(c.roomID, map[string]interface{}{
 		"event":    "player:moved",
 		"playerId": c.playerID,
 		"position": position,
 		"rotation": rotation,
+		"state":    state,
 	}, c)
 }
 
@@ -315,15 +308,13 @@ func (c *Client) handlePlayerAction(msg map[string]interface{}) {
 		return
 	}
 
-	action := msg["action"].(string)
+	action := asString(msg["action"])
 	payload := msg["payload"]
 
 	log.Printf("[Handler] Player action: %s from %s", action, c.playerID)
 
-	// Log event
 	go c.hub.playerSvc.LogPlayerEvent(c.playerID, c.roomID, "action:"+action, payload)
 
-	// Broadcast action to room
 	c.hub.BroadcastToRoom(c.roomID, map[string]interface{}{
 		"event":    "player:action",
 		"playerId": c.playerID,
@@ -333,7 +324,7 @@ func (c *Client) handlePlayerAction(msg map[string]interface{}) {
 }
 
 func (c *Client) handleGetRoomState(msg map[string]interface{}) {
-	roomID := int(msg["roomId"].(float64))
+	roomID := asInt(msg["roomId"])
 	players := c.hub.roomManager.GetRoomPlayers(roomID)
 
 	c.send <- map[string]interface{}{
@@ -349,7 +340,7 @@ func (c *Client) handleChat(msg map[string]interface{}) {
 		return
 	}
 
-	message := msg["message"].(string)
+	message := asString(msg["message"])
 
 	c.hub.BroadcastToRoom(c.roomID, map[string]interface{}{
 		"event":     "room:message",
@@ -359,7 +350,6 @@ func (c *Client) handleChat(msg map[string]interface{}) {
 	}, nil)
 }
 
-// BroadcastToRoom sends a message to all players in a room except sender
 func (h *Hub) BroadcastToRoom(roomID int, message interface{}, excludeClient *Client) {
 	players := h.roomManager.GetRoomPlayers(roomID)
 

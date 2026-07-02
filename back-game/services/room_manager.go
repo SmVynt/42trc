@@ -91,8 +91,8 @@ func (rm *RoomManager) RemovePlayer(playerID string) {
 }
 
 func (rm *RoomManager) UpdatePlayerPosition(playerID string, position models.Position) {
-	rm.mu.RLock()
-	defer rm.mu.RUnlock()
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
 
 	roomID, exists := rm.playerRooms[playerID]
 	if !exists {
@@ -106,8 +106,8 @@ func (rm *RoomManager) UpdatePlayerPosition(playerID string, position models.Pos
 }
 
 func (rm *RoomManager) UpdatePlayerRotation(playerID string, rotation models.Rotation) {
-	rm.mu.RLock()
-	defer rm.mu.RUnlock()
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
 
 	roomID, exists := rm.playerRooms[playerID]
 	if !exists {
@@ -117,6 +117,21 @@ func (rm *RoomManager) UpdatePlayerRotation(playerID string, rotation models.Rot
 	room, roomExists := rm.rooms[roomID]
 	if roomExists && room.Players[playerID] != nil {
 		room.Players[playerID].Rotation = rotation
+	}
+}
+
+func (rm *RoomManager) UpdatePlayerState(playerID string, state string) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	roomID, exists := rm.playerRooms[playerID]
+	if !exists {
+		return
+	}
+
+	room, roomExists := rm.rooms[roomID]
+	if roomExists && room.Players[playerID] != nil {
+		room.Players[playerID].State = state
 	}
 }
 

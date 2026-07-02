@@ -1,3 +1,5 @@
+import { decodeGameMessage, encodeGameMessage, type GameMessage } from '../components/game/utils/gameCodec'
+
 // Native WebSocket implementation (no Socket.IO overhead)
 const GAME_SERVER_BASE = import.meta.env.VITE_GAME_SERVER_URL || 'http://localhost:5001'
 
@@ -11,12 +13,12 @@ class GameSocket {
   private isConnected = false
   private isConnecting = false
   private roomId = 0
-  private playerId = ''
-  private listeners: Record<string, Function[]> = {}
+  playerId = ''
+  private listeners: Record<string, Array<(message: GameMessage) => void>> = {}
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
-  private messageQueue: any[] = []
+  private messageQueue: Array<ReturnType<typeof encodeGameMessage>> = []
 
   constructor() {
     this.playerId = generatePlayerId()
@@ -62,7 +64,7 @@ class GameSocket {
 
         this.ws.onmessage = (event) => {
           try {
-            const message = JSON.parse(event.data)
+            const message = decodeGameMessage(JSON.parse(event.data))
             const eventName = message.event
 
             if (this.listeners[eventName]) {
@@ -99,11 +101,17 @@ class GameSocket {
     })
   }
 
-  private send(message: any) {
+  private send(message: GameMessage) {
+    const wireMessage = encodeGameMessage(message)
+
     if (this.isConnected && this.ws) {
-      this.ws.send(JSON.stringify(message))
+    //   const messageStr = JSON.stringify(wireMessage)
+	//   const bytes = new TextEncoder().encode(messageStr).length
+	//   console.log(`📤 Sent bytes: ${bytes}`)
+	//   this.ws.send(messageStr)
+      this.ws.send(JSON.stringify(wireMessage))
     } else {
-      this.messageQueue.push(message)
+      this.messageQueue.push(wireMessage)
     }
   }
 
@@ -113,19 +121,21 @@ class GameSocket {
     this.send({
       event: 'player:join',
       roomId,
-      username
+      username,
+      playerId: this.playerId,
     })
   }
 
-  sendMovement(position: any, rotation: any) {
+  sendMovement(position: { x: number; y: number; z: number }, rotation: { y: number }, state?: string) {
     this.send({
       event: 'player:move',
       position,
-      rotation
+      rotation,
+      state,
     })
   }
 
-  sendAction(action: string, payload: any = {}) {
+  sendAction(action: string, payload: unknown = {}) {
     this.send({
       event: 'player:action',
       action,
@@ -147,14 +157,14 @@ class GameSocket {
     })
   }
 
-  on(eventName: string, callback: Function) {
+  on(eventName: string, callback: (message: GameMessage) => void) {
     if (!this.listeners[eventName]) {
       this.listeners[eventName] = []
     }
     this.listeners[eventName].push(callback)
   }
 
-  off(eventName: string, callback: Function) {
+  off(eventName: string, callback: (message: GameMessage) => void) {
     if (this.listeners[eventName]) {
       this.listeners[eventName] = this.listeners[eventName].filter(cb => cb !== callback)
     }
