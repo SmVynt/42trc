@@ -46,7 +46,7 @@ help:
 
 install:
 	@echo "$(YELLOW)Installing backend dependencies...$(RESET)"
-	@cd $(BACK_DIR) && npm install
+	@cd $(BACK_DIR) && go mod download
 	@echo "$(YELLOW)Installing game-server dependencies...$(RESET)"
 	@cd $(BACK_GAME_DIR) && go mod download
 	@echo "$(YELLOW)Installing frontend dependencies...$(RESET)"
