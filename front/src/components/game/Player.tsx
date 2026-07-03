@@ -4,22 +4,34 @@ import * as THREE from 'three'
 import { useAnimations, useGLTF } from '@react-three/drei'
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { CharacterControls } from './utils/characterControls'
+import { attachAccessoriesToBone, cloneAccessories, createRandomPlayerAppearanceSelection, HEAD_BONE_NAME } from './utils/playerAppearance'
 import { gameSocket } from '../../services/gameSocket'
 import { usePlayers } from '../../context/players.context'
 import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
+
 interface PlayerModelProps {
   controlsRef: React.MutableRefObject<CharacterControls | null>
 }
 
 const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
+  const cosmeticSelection = useMemo(() => createRandomPlayerAppearanceSelection(), [])
+
   const { scene, animations } = useGLTF(bodyModelUrl)
+  const { scene: hatScene } = useGLTF(cosmeticSelection.hatUrl)
+  const { scene: glassesScene } = useGLTF(cosmeticSelection.glassesUrl)
+  const { scene: faceScene } = useGLTF(cosmeticSelection.faceUrl)
   const { camera } = useThree()
   const { actions } = useAnimations(animations, groupRef)
 
   // Initialize CharacterControls with the group
   useEffect(() => {
-    if (groupRef.current && !controlsRef.current) {
+    if (!groupRef.current) {
+      return
+    }
+
+    const shouldReinitialize = !controlsRef.current || controlsRef.current.model !== groupRef.current
+    if (shouldReinitialize) {
       controlsRef.current = new CharacterControls(groupRef.current, camera, actions)
       console.log('✅ CharacterControls initialized')
     }
@@ -36,6 +48,24 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
     return skeletonClone(scene)
   }, [scene])
 
+  const accessories = useMemo(
+    () =>
+      cloneAccessories([
+        { kind: 'hat', scene: hatScene },
+        { kind: 'glasses', scene: glassesScene },
+        { kind: 'face', scene: faceScene },
+      ]),
+    [faceScene, glassesScene, hatScene]
+  )
+
+  useEffect(() => {
+    if (!clonedScene) {
+      return
+    }
+
+    return attachAccessoriesToBone(clonedScene, HEAD_BONE_NAME, accessories)
+  }, [accessories, clonedScene])
+
   return (
     <group ref={groupRef} position={[0, 0, 0]}>
       <primitive object={clonedScene} />
@@ -48,6 +78,12 @@ const Player = () => {
   const lastMovementSendTime = useRef<number>(0)
   const movementUpdateInterval = 50 // ms (20 updates per second)
   const controlsRef = useRef<CharacterControls | null>(null)
+
+  useEffect(() => {
+    return () => {
+      controlsRef.current = null
+    }
+  }, [])
 
   // Send heartbeat every 1 second to prevent being marked as inactive
   useEffect(() => {
@@ -72,7 +108,7 @@ const Player = () => {
       const code = e.code
 
       // Prevent default for game keys
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft'].includes(code)) {
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'KeyC'].includes(code)) {
         e.preventDefault()
       }
 

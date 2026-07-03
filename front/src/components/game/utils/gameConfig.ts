@@ -6,8 +6,8 @@ export class GameConfig {
   static readonly CAMERA_FOV = 30 // degrees
 
   // Player movement
-  static readonly WALK_VELOCITY = 5
-  static readonly RUN_VELOCITY = 8
+  static readonly WALK_VELOCITY = 6
+  static readonly RUN_VELOCITY = 10
   static readonly GRAVITY = 30 // m/s²
   static readonly JUMP_HEIGHT = 2 // meters
 

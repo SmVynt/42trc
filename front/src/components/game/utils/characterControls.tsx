@@ -6,6 +6,7 @@ const W = 'KeyW'
 const A = 'KeyA'
 const S = 'KeyS'
 const D = 'KeyD'
+const C = 'KeyC'
 const SHIFT = 'ShiftLeft'
 const SPACE = 'Space'
 const DIRECTIONS = [W, A, S, D]
@@ -24,9 +25,11 @@ export class CharacterControls {
   currentRotationY: number = 0 // Track Y-axis rotation angle
 
   // State
-  toggleRun: boolean = true
+//   toggleRun: boolean = true
   walkVelocity = GameConfig.WALK_VELOCITY
   runVelocity = GameConfig.RUN_VELOCITY
+
+  isSitting: boolean = false
 
   // Jumping & Physics
   verticalVelocity = 0
@@ -48,6 +51,7 @@ export class CharacterControls {
 	}
 	this.jumpVelocity = Math.sqrt(2 * this.gravity * this.jumpHeight)
 	this.updateCameraPosition()
+	this.playAction(this.findAction(['idle']), THREE.LoopRepeat, false)
 	this.playStateAnimation('idle')
   }
 
@@ -61,15 +65,16 @@ export class CharacterControls {
 	  return this.currentState
 	}
 
-  public switchRunToggle() {
-	this.toggleRun = !this.toggleRun
-  }
+//   public switchRunToggle() {
+// 	this.toggleRun = !this.toggleRun
+//   }
 
   public jump() {
 	if (this.isOnGround) {
 	  this.verticalVelocity = this.jumpVelocity
 	  this.isOnGround = false
 	  this.playStateAnimation('jump')
+	  this.isSitting = false
 	}
   }
 
@@ -198,13 +203,14 @@ export class CharacterControls {
 	  const euler = new THREE.Euler().setFromQuaternion(this.model.quaternion, 'YXZ')
 	  this.currentRotationY = euler.y
 
-	  const velocity = keysPressed[SHIFT] ? this.runVelocity * 1.5 :
-					   directionPressed && this.toggleRun ? this.runVelocity : this.walkVelocity
+	  const velocity = directionPressed ? keysPressed[SHIFT] ? this.runVelocity : this.walkVelocity : 0
 
 	  const moveX = this.walkDirection.x * velocity * delta
 	  const moveZ = this.walkDirection.z * velocity * delta
 	  this.model.position.x += moveX
 	  this.model.position.z += moveZ
+
+	  this.isSitting = false
 	}
 
 	// Apply gravity
@@ -218,11 +224,18 @@ export class CharacterControls {
 	  this.isOnGround = true
 	}
 
+	if (keysPressed[C]){
+		if (this.isOnGround && !directionPressed) {
+			this.isSitting = true
+		}
+	}
+
 	if (!this.isOnGround) {
 	  this.playStateAnimation('jump')
 	} else if (this.walkDirection.length() > 0) {
-	  const isRunning = keysPressed[SHIFT] ? true : this.toggleRun
-	  this.playStateAnimation(isRunning ? 'run' : 'walk')
+	  this.playStateAnimation(keysPressed[SHIFT] ? 'run' : 'walk')
+	} else if (this.isSitting) {
+	  this.playStateAnimation('sit')
 	} else {
 	  this.playStateAnimation('idle')
 	}
