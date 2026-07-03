@@ -4,6 +4,12 @@ import { Billboard, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { usePlayers } from '../../context/players.context'
+import {
+  HEAD_BONE_NAME,
+  attachAccessoriesToBone,
+  cloneAccessories,
+  createRandomPlayerAppearanceSelection,
+} from './utils/playerAppearance'
 import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
 
 export function OtherPlayers() {
@@ -21,6 +27,10 @@ export function OtherPlayers() {
 
 function OtherPlayerModel({ player }: { player: any }) {
   const meshRef = useRef<THREE.Group>(null)
+  const cosmeticSelection = useMemo(
+    () => createRandomPlayerAppearanceSelection(),
+    []
+  )
 
   // Start position (where we were)
   const startPos = useRef<THREE.Vector3>(new THREE.Vector3(player.position.x, player.position.y, player.position.z))
@@ -39,9 +49,29 @@ function OtherPlayerModel({ player }: { player: any }) {
 
   // Load player model
   const { scene, animations } = useGLTF(bodyModelUrl)
+  const { scene: hatScene } = useGLTF(cosmeticSelection.hatUrl)
+  const { scene: glassesScene } = useGLTF(cosmeticSelection.glassesUrl)
+  const { scene: faceScene } = useGLTF(cosmeticSelection.faceUrl)
   const { actions } = useAnimations(animations, meshRef)
 
   const clonedScene = useMemo(() => skeletonClone(scene), [scene])
+  const accessories = useMemo(
+    () =>
+      cloneAccessories([
+        { kind: 'hat', scene: hatScene },
+        { kind: 'glasses', scene: glassesScene },
+        { kind: 'face', scene: faceScene },
+      ]),
+    [faceScene, glassesScene, hatScene]
+  )
+
+  useEffect(() => {
+    if (!clonedScene) {
+      return
+    }
+
+    return attachAccessoriesToBone(clonedScene, HEAD_BONE_NAME, accessories)
+  }, [accessories, clonedScene])
 
   useEffect(() => {
     const action = actions?.[player.state] ?? actions?.idle
