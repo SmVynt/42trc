@@ -1,13 +1,26 @@
-# Backend — production image (no devDependencies)
-FROM node:18-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev
+# --- build stage ---
+FROM golang:1.26-alpine AS build
 
-FROM node:18-alpine
 WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=deps /app/node_modules ./node_modules
+
+# Cache deps first
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Build the server binary
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /server .
+
+# --- run stage ---
+FROM alpine:3.20
+
+WORKDIR /app
+
+# CA certs for outbound HTTPS (42 API)
+RUN apk add --no-cache ca-certificates
+
+COPY --from=build /server /server
+
 EXPOSE 5000
-CMD ["npm", "start"]
+
+CMD ["/server"]

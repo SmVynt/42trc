@@ -138,16 +138,24 @@ frontend-logs:
 
 ps:
 	@docker compose --env-file .env -f $(COMPOSE_FILE) ps
-
+	
 seed:
 	@echo "$(YELLOW)Seeding database from 42 API...$(RESET)"
-	@docker compose --env-file .env -f $(COMPOSE_FILE) run --rm -v "$(PWD)/$(BACK_DIR):/app" -w /app backend npm run seed
+	@docker compose -f $(COMPOSE_FILE) run --rm seed go run ./cmd/seed $(STARS)
 	@echo "$(GREEN)Seed complete.$(RESET)"
+
+seed-stars:
+	@$(MAKE) seed STARS=--stars
 
 reseed:
 	@echo "$(YELLOW)Truncating tables...$(RESET)"
-	@docker compose --env-file .env -f $(COMPOSE_FILE) exec -T postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "TRUNCATE user_projects, user_cursus, inventory_items, users RESTART IDENTITY CASCADE;"
+	@docker compose --env-file .env -f $(COMPOSE_FILE) exec -T postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "TRUNCATE user_projects, user_cursus, users RESTART IDENTITY CASCADE;"
 	@$(MAKE) seed
+
+reseed-stars:
+	@echo "$(YELLOW)Truncating tables...$(RESET)"
+	@docker compose --env-file .env -f $(COMPOSE_FILE) exec -T postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "TRUNCATE user_projects, user_cursus, users RESTART IDENTITY CASCADE;"
+	@$(MAKE) seed-stars
 
 re: fclean all
 
