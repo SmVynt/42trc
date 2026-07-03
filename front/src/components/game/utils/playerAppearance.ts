@@ -82,7 +82,6 @@ export const attachAccessoriesToBone = (
   const resolveHeadReference = (attachmentTarget: THREE.Object3D): HeadReference => {
     const topNode = allNodes.find((node) => {
       const normalized = node.name.toLowerCase()
-	  console.log('Looking for head top node, checking:', normalized)
       return HEAD_TOP_FALLBACKS.some((candidate) => normalized.includes(candidate))
     })
 
@@ -107,42 +106,12 @@ export const attachAccessoriesToBone = (
   }
 
   const normalizeAccessoryTransform = (kind: AccessoryKind, object: THREE.Object3D, headReference: HeadReference) => {
-    object.updateMatrixWorld(true)
+    // object.updateMatrixWorld(true)
 
-    const box = new THREE.Box3().setFromObject(object)
-    if (box.isEmpty()) {
-      return
-    }
-
-    const center = new THREE.Vector3()
-    const size = new THREE.Vector3()
-    box.getCenter(center)
-    box.getSize(size)
-
-    const headReferenceSize = headReference.size
-    object.position.set(-center.x, -center.y, -center.z)
-
-    // Use one common scale strategy for all accessories.
-    // const maxDim = Math.max(size.x, size.y, size.z)
-    // const desiredSize = headReferenceSize * 0.8
-    // const scaleBase = maxDim
-    // const autoScale = scaleBase > 0 ? desiredSize / scaleBase : 1
-	// console.log(`Accessory kind: ${kind}, original size: ${size.toArray()}, head reference size: ${headReferenceSize}, auto scale: ${autoScale}`)
-    // object.scale.setScalar(autoScale)
-
-    object.scale.setScalar(headReferenceSize) // Use a fixed scale factor based on head reference size
-
-    // if (kind === 'hat') {
-    //   object.position.addScaledVector(headReference.topLocal, 0.9)
-    // } else if (kind === 'glasses') {
-    //   object.position.addScaledVector(headReference.topLocal, 0.58)
-    //   object.position.z += headReferenceSize * 0.18
-    // } else if (kind === 'face') {
-    //   object.position.addScaledVector(headReference.topLocal, 0.5)
-    //   object.position.z += headReferenceSize * 0.16
-    // }
-	object.position.addScaledVector(headReference.topLocal, 1)
-	// object.position.z += headReferenceSize * 0.1
+    // object.scale.setScalar(headReference.size)
+	object.scale.setScalar(100)
+	// console.log(`headReferenceSize=${headReference.size}`)
+	// object.position.addScaledVector(headReference.topLocal, 0)
   }
 
   const attachedObjects: THREE.Object3D[] = []
@@ -157,8 +126,9 @@ export const attachAccessoriesToBone = (
     }
 
     const attachedObject = object.clone(true)
-    const headReference = resolveHeadReference(attachmentTarget)
-    normalizeAccessoryTransform(kind, attachedObject, headReference)
+    // const headReference = resolveHeadReference(attachmentTarget)
+    // normalizeAccessoryTransform(kind, attachedObject, headReference)
+	attachedObject.scale.setScalar(100)
 
     attachedObject.traverse((node) => {
       if ((node as THREE.Mesh).isMesh) {
