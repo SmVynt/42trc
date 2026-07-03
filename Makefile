@@ -24,6 +24,8 @@ GAME_API_URL	= http://localhost:5001
 TARGET_DEV		:= development
 TARGET_PROD		:= production
 
+POSTGRES_USER	:= root
+POSTGRES_DB		:= transcendence
 
 all: install build
 
@@ -44,7 +46,7 @@ help:
 
 install:
 	@echo "$(YELLOW)Installing backend dependencies...$(RESET)"
-	@cd $(BACK_DIR) && npm install
+	@cd $(BACK_DIR) && go mod download
 	@echo "$(YELLOW)Installing game-server dependencies...$(RESET)"
 	@cd $(BACK_GAME_DIR) && go mod download
 	@echo "$(YELLOW)Installing frontend dependencies...$(RESET)"
@@ -136,7 +138,25 @@ frontend-logs:
 
 ps:
 	@docker compose --env-file .env -f $(COMPOSE_FILE) ps
+	
+seed:
+	@echo "$(YELLOW)Seeding database from 42 API...$(RESET)"
+	@docker compose -f $(COMPOSE_FILE) run --rm seed go run ./cmd/seed $(STARS)
+	@echo "$(GREEN)Seed complete.$(RESET)"
+
+seed-stars:
+	@$(MAKE) seed STARS=--stars
+
+reseed:
+	@echo "$(YELLOW)Truncating tables...$(RESET)"
+	@docker compose --env-file .env -f $(COMPOSE_FILE) exec -T postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "TRUNCATE user_projects, user_cursus, users RESTART IDENTITY CASCADE;"
+	@$(MAKE) seed
+
+reseed-stars:
+	@echo "$(YELLOW)Truncating tables...$(RESET)"
+	@docker compose --env-file .env -f $(COMPOSE_FILE) exec -T postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "TRUNCATE user_projects, user_cursus, users RESTART IDENTITY CASCADE;"
+	@$(MAKE) seed-stars
 
 re: fclean all
 
-.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs ps re
+.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs ps seed reseed re
