@@ -82,6 +82,7 @@ export const attachAccessoriesToBone = (
   const resolveHeadReference = (attachmentTarget: THREE.Object3D): HeadReference => {
     const topNode = allNodes.find((node) => {
       const normalized = node.name.toLowerCase()
+	  console.log('Looking for head top node, checking:', normalized)
       return HEAD_TOP_FALLBACKS.some((candidate) => normalized.includes(candidate))
     })
 
@@ -121,37 +122,33 @@ export const attachAccessoriesToBone = (
     const headReferenceSize = headReference.size
     object.position.set(-center.x, -center.y, -center.z)
 
-    const maxDim = Math.max(size.x, size.y, size.z)
-    const maxFaceDim = Math.max(size.x, size.y)
-    const desiredSize =
-      kind === 'hat'
-        ? headReferenceSize * 0.9
-        : kind === 'glasses'
-          ? headReferenceSize * 0.55
-          : headReferenceSize * 0.8
+    // Use one common scale strategy for all accessories.
+    // const maxDim = Math.max(size.x, size.y, size.z)
+    // const desiredSize = headReferenceSize * 0.8
+    // const scaleBase = maxDim
+    // const autoScale = scaleBase > 0 ? desiredSize / scaleBase : 1
+	// console.log(`Accessory kind: ${kind}, original size: ${size.toArray()}, head reference size: ${headReferenceSize}, auto scale: ${autoScale}`)
+    // object.scale.setScalar(autoScale)
 
-    const scaleBase = kind === 'glasses' ? maxFaceDim : maxDim
-    const autoScale = scaleBase > 0 ? desiredSize / scaleBase : 1
-    object.scale.setScalar(autoScale)
+    object.scale.setScalar(headReferenceSize) // Use a fixed scale factor based on head reference size
 
-    if (kind === 'hat') {
-      object.position.addScaledVector(headReference.topLocal, 0.9)
-    } else if (kind === 'glasses') {
-      object.position.addScaledVector(headReference.topLocal, 0.58)
-      object.position.z += headReferenceSize * 0.18
-    } else if (kind === 'face') {
-      object.position.addScaledVector(headReference.topLocal, 0.5)
-      object.position.z += headReferenceSize * 0.16
-    }
+    // if (kind === 'hat') {
+    //   object.position.addScaledVector(headReference.topLocal, 0.9)
+    // } else if (kind === 'glasses') {
+    //   object.position.addScaledVector(headReference.topLocal, 0.58)
+    //   object.position.z += headReferenceSize * 0.18
+    // } else if (kind === 'face') {
+    //   object.position.addScaledVector(headReference.topLocal, 0.5)
+    //   object.position.z += headReferenceSize * 0.16
+    // }
+	object.position.addScaledVector(headReference.topLocal, 1)
+	// object.position.z += headReferenceSize * 0.1
   }
 
   const attachedObjects: THREE.Object3D[] = []
 
   accessories.forEach(({ kind, object }) => {
-    const candidates =
-      kind === 'hat'
-        ? [...HEAD_TOP_FALLBACKS, boneName, ...HEAD_BONE_FALLBACKS]
-        : [boneName, ...HEAD_BONE_FALLBACKS, ...HEAD_TOP_FALLBACKS]
+    const candidates = [boneName, ...HEAD_BONE_FALLBACKS]
 
     const attachmentTarget = findNodeByCandidates(allNodes, candidates)
     if (!attachmentTarget) {
