@@ -16,7 +16,7 @@ type SessionClaims struct {
 }
 
 func secret() []byte {
-	return []byte(os.Getenv("JWT_SK"))
+	return []byte(os.Getenv("JWT_SECRET"))
 }
 
 // GenerateSessionToken signs a session JWT for the given email
