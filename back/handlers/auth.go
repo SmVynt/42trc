@@ -1,0 +1,146 @@
+package handlers
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/SmVynt/42trc/back/internal/api42"
+	"github.com/SmVynt/42trc/back/internal/auth"
+	"github.com/SmVynt/42trc/back/models"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+type callbackBody struct {
+	Code  string `json:"code"`
+	State string `json:"state"`
+}
+
+// userResponse mirrors the shape the frontend expects
+func userResponse(u models.User) gin.H {
+	return gin.H{
+		"id":              u.ID,
+		"username":        u.Username,
+		"intra":           u.Intra,
+		"email":           u.Email,
+		"displayname":     u.Displayname,
+		"image":           u.Image,
+		"emailVerifiedAt": u.EmailVerifiedAt,
+		"lastLoginAt":     u.LastLoginAt,
+		"stats": gin.H{
+			"gamesPlayed": u.GamesPlayed,
+			"wins":        u.Wins,
+			"points":      u.Points,
+		},
+	}
+}
+
+// Handle42Callback exchanges the OAuth code, upserts the user, returns a session JWT
+func Handle42Callback(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body callbackBody
+		if err := c.ShouldBindJSON(&body); err != nil || body.Code == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Authorization code is required."})
+			return
+		}
+
+		ctx := c.Request.Context()
+
+		accessToken, err := api42.ExchangeCode(ctx, body.Code, body.State)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
+			return
+		}
+
+		profile, err := api42.FetchMe(ctx, accessToken)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
+			return
+		}
+
+		email := strings.ToLower(strings.TrimSpace(profile.Email))
+		if email == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "42 profile has no email."})
+			return
+		}
+		username := strings.ToLower(strings.TrimSpace(profile.Login))
+		if username == "" {
+			username = email
+		}
+		intra := profile.Login
+		if intra == "" {
+			intra = username
+		}
+
+		user := models.User{
+			Username: username,
+			Email:    email,
+			Intra:    intra,
+		}
+		// Upsert by email, refresh login timestamps
+		if err := db.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "email"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"intra":             intra,
+				"email_verified_at": gorm.Expr("now()"),
+				"last_login_at":     gorm.Expr("now()"),
+				"updated_at":        gorm.Expr("now()"),
+			}),
+		}).Create(&user).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save user."})
+			return
+		}
+
+		// Reload to get the row (id + refreshed fields)
+		var saved models.User
+		if err := db.Where("email = ?", email).First(&saved).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to load user."})
+			return
+		}
+
+		token, err := auth.GenerateSessionToken(email)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to issue session token."})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "42 OAuth login complete.",
+			"user":    userResponse(saved),
+			"token":   token,
+		})
+	}
+}
+
+// GetMe returns the current user based on the session JWT
+func GetMe(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		token := ""
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+		if token == "" {
+			token = c.Query("token")
+		}
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Missing auth token."})
+			return
+		}
+
+		claims, err := auth.ParseSessionToken(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid or expired token."})
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", claims.Email).First(&user).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": "User not found."})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"user": userResponse(user)})
+	}
+}
