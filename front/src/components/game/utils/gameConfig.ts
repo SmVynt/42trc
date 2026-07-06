@@ -1,8 +1,14 @@
 export class GameConfig {
+
+  // Starting location
+  static readonly START_X = 0
+  static readonly START_Y = 1.05
+  static readonly START_Z = 0
+
   // Fixed isometric camera
   static readonly CAMERA_DISTANCE = 14
   static readonly CAMERA_HEIGHT = 7
-  static readonly CAMERA_ANGLE = Math.PI / 4 // 45 degrees
+  static readonly CAMERA_ANGLE = Math.PI * 5 / 4 // 45 degrees
   static readonly CAMERA_FOV = 30 // degrees
 
   // Player movement

@@ -77,7 +77,7 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
       ref={rigidBodyRef}
       colliders={false}
       enabledRotations={[false, false, false]}
-      position={[0, 0.05, 0]}
+      position={[GameConfig.START_X, GameConfig.START_Y, GameConfig.START_Z]}
       type="dynamic"
       linearDamping={0.5}
       angularDamping={0.5}
