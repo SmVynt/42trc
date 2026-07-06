@@ -12,12 +12,14 @@ export class GameConfig {
   static readonly CAMERA_FOV = 30 // degrees
 
   // Player movement
-  static readonly WALK_VELOCITY = 6
-  static readonly RUN_VELOCITY = 10
-  // static readonly GRAVITY = 30 // m/s²
+  static readonly WALK_VELOCITY = 8
+  static readonly RUN_VELOCITY = 14
+  static readonly GRAVITY = 30 // m/s²
   static readonly JUMP_HEIGHT = 2 // meters
   static readonly JUMP_VELOCITY = 10
-  static readonly GRAVITY_SCALE = 3
 
-  //
+  // KinematicCharacterController
+  static readonly CHARACTER_OFFSET = 0.01 // skin width
+  static readonly MAX_SLOPE_CLIMB_ANGLE = 45 * (Math.PI / 180) // radians
+  static readonly MIN_SLOPE_SLIDE_ANGLE = 30 * (Math.PI / 180) // radians
 }

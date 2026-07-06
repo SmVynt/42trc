@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useAnimations, useGLTF } from '@react-three/drei'
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { RigidBody, CapsuleCollider, useRapier, RapierRigidBody } from '@react-three/rapier'
+import { RigidBody, CapsuleCollider, useRapier, RapierRigidBody, RapierCollider } from '@react-three/rapier'
 import { CharacterControls } from './utils/characterControls'
 import { attachAccessoriesToBone, cloneAccessories, createRandomPlayerAppearanceSelection, HEAD_BONE_NAME } from './utils/playerAppearance'
 import { gameSocket } from '../../services/gameSocket'
@@ -14,11 +14,13 @@ import { convertToUnlit } from './utils/unlitMaterial'
 
 interface PlayerModelProps {
   controlsRef: React.MutableRefObject<CharacterControls | null>
+  controllerRef: React.MutableRefObject<any>
 }
 
-const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
+const PlayerModel = ({ controlsRef, controllerRef }: PlayerModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
   const rigidBodyRef = useRef<RapierRigidBody>(null)
+  const colliderRef = useRef<RapierCollider>(null)
   const cosmeticSelection = useMemo(() => createRandomPlayerAppearanceSelection(), [])
 
   const { scene, animations } = useGLTF(bodyModelUrl)
@@ -28,7 +30,7 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
   const { camera } = useThree()
   const { actions } = useAnimations(animations, groupRef)
 
-  // Initialize CharacterControls with the group and rigid body ref
+  // Initialize CharacterControls
   useEffect(() => {
     if (!groupRef.current) {
       return
@@ -36,10 +38,20 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
 
     const shouldReinitialize = !controlsRef.current || controlsRef.current.model !== groupRef.current
     if (shouldReinitialize) {
-      controlsRef.current = new CharacterControls(groupRef.current, rigidBodyRef, camera, actions)
+      controlsRef.current = new CharacterControls(
+        groupRef.current,
+        rigidBodyRef,
+        colliderRef,
+        camera,
+        actions
+      )
+      // Set controller if already available
+      if (controllerRef.current) {
+        controlsRef.current.setController(controllerRef.current)
+      }
       console.log('✅ CharacterControls initialized')
     }
-  }, [actions, camera, controlsRef])
+  }, [actions, camera, controlsRef, controllerRef])
 
   useEffect(() => {
     if (controlsRef.current) {
@@ -78,12 +90,9 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
       colliders={false}
       enabledRotations={[false, false, false]}
       position={[GameConfig.START_X, GameConfig.START_Y, GameConfig.START_Z]}
-      type="dynamic"
-      linearDamping={0.5}
-      angularDamping={0.5}
-      gravityScale={GameConfig.GRAVITY_SCALE}
+      type="kinematicPosition"
     >
-      <CapsuleCollider args={[0.6, 0.6]} position={[0, 1.2, 0]} />
+      <CapsuleCollider ref={colliderRef} args={[0.6, 0.6]} position={[0, 1.2, 0]} />
       <group ref={groupRef}>
         <primitive object={clonedScene} />
       </group>
@@ -98,11 +107,21 @@ const Player = () => {
   const controlsRef = useRef<CharacterControls | null>(null)
   const { world } = useRapier()
 
+  const controllerRef = useRef<any>(null)
+
+  // Create the KinematicCharacterController after mount (WASM must be ready)
   useEffect(() => {
+    const ctrl = world.createCharacterController(GameConfig.CHARACTER_OFFSET)
+    controllerRef.current = ctrl
+    if (controlsRef.current) {
+      controlsRef.current.setController(ctrl)
+    }
     return () => {
       controlsRef.current = null
+      controllerRef.current = null
+      world.removeCharacterController(ctrl)
     }
-  }, [])
+  }, [world])
 
   // Send heartbeat every 1 second to prevent being marked as inactive
   useEffect(() => {
@@ -215,7 +234,6 @@ const Player = () => {
     // When a player moves
     gameSocket.on('player:moved', (data) => {
       if (data.playerId !== gameSocket.playerId) {
-        // console.log('Player moved:', data.playerId, data.position, data.rotation, data.state)
         updatePlayerPosition(data.playerId, data.position, data.rotation, data.state)
       }
     })
@@ -239,10 +257,9 @@ const Player = () => {
   // Game loop - send updates to server
   useFrame((state, delta) => {
     if (controlsRef.current) {
-      controlsRef.current.update(delta, keysPressed.current, world)
+      controlsRef.current.update(delta, keysPressed.current)
 
-      // Send movement/heartbeat 20 times per second (every 50ms) or whenever position changes
-      // This also serves as heartbeat to prevent players from being removed as inactive
+      // Send movement/heartbeat 20 times per second (every 50ms)
       const now = Date.now()
       if (now - lastMovementSendTime.current >= movementUpdateInterval) {
         lastMovementSendTime.current = now
@@ -264,7 +281,8 @@ const Player = () => {
     }
   }, -1)
 
-  return <PlayerModel controlsRef={controlsRef} />
+  return <PlayerModel controlsRef={controlsRef} controllerRef={controllerRef} />
 }
 
 export default Player
+

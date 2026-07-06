@@ -1,7 +1,6 @@
 import React from 'react'
 import * as THREE from 'three'
-import * as RAPIER from '@dimforge/rapier3d-compat'
-import type { RapierRigidBody } from '@react-three/rapier'
+import type { RapierRigidBody, RapierCollider } from '@react-three/rapier'
 import { GameConfig } from './gameConfig'
 import type { GamePlayerState } from './gameCodec'
 
@@ -16,6 +15,8 @@ const DIRECTIONS = [W, A, S, D]
 export class CharacterControls {
   model: THREE.Mesh | THREE.Group
   rigidBodyRef: React.RefObject<RapierRigidBody | null>
+  colliderRef: React.RefObject<RapierCollider | null>
+  controller: any // KinematicCharacterController
   camera: THREE.Camera
   animations: Record<string, THREE.AnimationAction | null> = {}
   private currentAction: THREE.AnimationAction | null = null
@@ -33,11 +34,14 @@ export class CharacterControls {
 
   isSitting: boolean = false
 
-  // Jumping & Physics
+  // Jumping & Physics (manual gravity for kinematic body)
+  verticalVelocity = 0
   isOnGround = true
-  // gravity = GameConfig.GRAVITY
-  // jumpHeight = GameConfig.JUMP_HEIGHT
+  gravity = GameConfig.GRAVITY
   jumpVelocity = GameConfig.JUMP_VELOCITY
+  private controllerConfigured = false
+  private coyoteTimer = 0 // time (seconds) remaining for ground grace period
+  private readonly COYOTE_DURATION = 0.15 // 150ms grace period after losing contact
 
   // Fixed isometric camera
   cameraDistance = GameConfig.CAMERA_DISTANCE
@@ -47,19 +51,39 @@ export class CharacterControls {
   constructor(
     model: THREE.Mesh | THREE.Group,
     rigidBodyRef: React.RefObject<RapierRigidBody | null>,
+    colliderRef: React.RefObject<RapierCollider | null>,
     camera: THREE.Camera,
     animations?: Record<string, THREE.AnimationAction | null>
   ) {
     this.model = model
     this.rigidBodyRef = rigidBodyRef
+    this.colliderRef = colliderRef
     this.camera = camera
     if (animations) {
       this.animations = animations
     }
-    // this.jumpVelocity = Math.sqrt(2 * RAPIER.gravity.y * this.jumpHeight)
+
     this.updateCameraPosition()
     this.playAction(this.findAction(['idle']), THREE.LoopRepeat, false)
     this.playStateAnimation('idle')
+  }
+
+  public setController(controller: any) {
+    this.controller = controller
+    this.controllerConfigured = false
+  }
+
+  private ensureControllerConfigured() {
+    if (this.controllerConfigured || !this.controller) return
+    try {
+      this.controller.setSlideEnabled(true)
+      this.controller.setMaxSlopeClimbAngle(GameConfig.MAX_SLOPE_CLIMB_ANGLE)
+      this.controller.setMinSlopeSlideAngle(GameConfig.MIN_SLOPE_SLIDE_ANGLE)
+      this.controller.setApplyImpulsesToDynamicBodies(true)
+      this.controllerConfigured = true
+    } catch (e) {
+      // Controller not ready yet, will retry next frame
+    }
   }
 
   public setAnimations(animations: Record<string, THREE.AnimationAction | null>) {
@@ -73,11 +97,10 @@ export class CharacterControls {
   }
 
   public jump() {
-    const rb = this.rigidBodyRef.current
-    if (rb && this.isOnGround) {
-      const currentLinvel = rb.linvel()
-      rb.setLinvel({ x: currentLinvel.x, y: this.jumpVelocity, z: currentLinvel.z }, true)
+    if (this.isOnGround) {
+      this.verticalVelocity = this.jumpVelocity
       this.isOnGround = false
+      this.coyoteTimer = 0 // Immediately enter airborne state
       this.playStateAnimation('jump')
       this.isSitting = false
     }
@@ -193,30 +216,34 @@ export class CharacterControls {
     this.camera.up.set(0, 1, 0)
   }
 
-  public update(delta: number, keysPressed: Record<string, boolean>, world?: any) {
+  public update(delta: number, keysPressed: Record<string, boolean>) {
     const rb = this.rigidBodyRef.current
-    if (!rb) return
+    const collider = this.colliderRef.current
+    if (!rb || !collider || !this.controller) return
 
-    // Ground check via downward raycast
-    if (world) {
-      const translation = rb.translation()
-      // Bottom of capsule is at translation.y, cast from Y + 0.1 downwards
-      const rayOrigin = { x: translation.x, y: translation.y + 0.1, z: translation.z }
-      const rayDirection = { x: 0, y: -1, z: 0 }
-      const ray = new RAPIER.Ray(rayOrigin, rayDirection)
+    // Lazy-configure the controller (WASM may not be ready at construction time)
+    this.ensureControllerConfigured()
+    if (!this.controllerConfigured) return
 
-      const hit = world.castRay(
-        ray,
-        0.15, // maxToi (distance)
-        true, // solid
-        undefined,
-        undefined,
-        undefined,
-        rb as any // filter rigid body (ignore self)
-      )
-      this.isOnGround = hit !== null
+    // --- Ground check with coyote time (prevents flickering on slopes) ---
+    const rawGrounded = this.controller.computedGrounded()
+    if (rawGrounded) {
+      this.coyoteTimer = this.COYOTE_DURATION
+      this.isOnGround = true
+    } else {
+      this.coyoteTimer -= delta
+      this.isOnGround = this.coyoteTimer > 0
     }
 
+    // --- Apply gravity ---
+    if (this.isOnGround && this.verticalVelocity <= 0) {
+      // Strong snap-down to keep capsule pressed against slopes
+      this.verticalVelocity = -3
+    } else {
+      this.verticalVelocity -= this.gravity * delta
+    }
+
+    // --- Compute horizontal movement from input ---
     const directionPressed = DIRECTIONS.some((key) => keysPressed[key] == true)
 
     this.walkDirection.set(0, 0, 0)
@@ -238,7 +265,7 @@ export class CharacterControls {
       this.walkDirection.z -= Math.sin(this.cameraAngle)
     }
 
-    let velocity = 0
+    let speed = 0
     if (this.walkDirection.length() > 0) {
       this.walkDirection.normalize()
 
@@ -250,31 +277,54 @@ export class CharacterControls {
       const euler = new THREE.Euler().setFromQuaternion(this.model.quaternion, 'YXZ')
       this.currentRotationY = euler.y
 
-      velocity = directionPressed ? (keysPressed[SHIFT] ? this.runVelocity : this.walkVelocity) : 0
+      speed = directionPressed ? (keysPressed[SHIFT] ? this.runVelocity : this.walkVelocity) : 0
       this.isSitting = false
     }
 
-    // Set velocity on RigidBody, retaining existing vertical velocity
-    const currentLinvel = rb.linvel()
-    const targetVx = this.walkDirection.x * velocity
-    const targetVz = this.walkDirection.z * velocity
-    rb.setLinvel({ x: targetVx, y: currentLinvel.y, z: targetVz }, true)
+    // --- Build desired movement vector ---
+    const desiredMovement = {
+      x: this.walkDirection.x * speed * delta,
+      y: this.verticalVelocity * delta,
+      z: this.walkDirection.z * speed * delta,
+    }
 
+    // --- Let Rapier's KCC compute safe movement (slide along walls/slopes) ---
+    this.controller.computeColliderMovement(collider, desiredMovement)
+
+    // --- Apply the corrected movement ---
+    const correctedMovement = this.controller.computedMovement()
+    const currentPos = rb.translation()
+    rb.setNextKinematicTranslation({
+      x: currentPos.x + correctedMovement.x,
+      y: currentPos.y + correctedMovement.y,
+      z: currentPos.z + correctedMovement.z,
+    })
+
+    // --- Sit logic ---
     if (keysPressed[C]) {
       if (this.isOnGround && !directionPressed) {
         this.isSitting = true
       }
     }
 
+    // --- Animation state ---
+    let nextAnim: string
     if (!this.isOnGround) {
-      this.playStateAnimation('jump')
+      nextAnim = 'jump'
     } else if (this.walkDirection.length() > 0) {
-      this.playStateAnimation(keysPressed[SHIFT] ? 'run' : 'walk')
+      nextAnim = keysPressed[SHIFT] ? 'run' : 'walk'
     } else if (this.isSitting) {
-      this.playStateAnimation('sit')
+      nextAnim = 'sit'
     } else {
-      this.playStateAnimation('idle')
+      nextAnim = 'idle'
     }
+
+    // Debug: log state transitions and ground detection
+    // if (nextAnim !== this.currentState) {
+    //   console.log(`🎮 [ANIM] ${this.currentState} → ${nextAnim} | grounded=${this.isOnGround} raw=${rawGrounded} coyote=${this.coyoteTimer.toFixed(3)} vVel=${this.verticalVelocity.toFixed(2)} pos.y=${currentPos.y.toFixed(2)}`)
+    // }
+
+    this.playStateAnimation(nextAnim as any)
   }
 
   public updateCamera() {
@@ -294,4 +344,3 @@ export class CharacterControls {
     return new THREE.Vector3()
   }
 }
-
