@@ -8,8 +8,10 @@ export class GameConfig {
   // Player movement
   static readonly WALK_VELOCITY = 6
   static readonly RUN_VELOCITY = 10
-  static readonly GRAVITY = 30 // m/s²
+  // static readonly GRAVITY = 30 // m/s²
   static readonly JUMP_HEIGHT = 2 // meters
+  static readonly JUMP_VELOCITY = 10
+  static readonly GRAVITY_SCALE = 3
 
   //
 }

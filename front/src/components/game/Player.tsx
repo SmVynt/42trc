@@ -3,11 +3,14 @@ import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useAnimations, useGLTF } from '@react-three/drei'
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { RigidBody, CapsuleCollider, useRapier, RapierRigidBody } from '@react-three/rapier'
 import { CharacterControls } from './utils/characterControls'
 import { attachAccessoriesToBone, cloneAccessories, createRandomPlayerAppearanceSelection, HEAD_BONE_NAME } from './utils/playerAppearance'
 import { gameSocket } from '../../services/gameSocket'
 import { usePlayers } from '../../context/players.context'
 import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
+import { GameConfig } from './utils/gameConfig'
+import { convertToUnlit } from './utils/unlitMaterial'
 
 interface PlayerModelProps {
   controlsRef: React.MutableRefObject<CharacterControls | null>
@@ -15,6 +18,7 @@ interface PlayerModelProps {
 
 const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
+  const rigidBodyRef = useRef<RapierRigidBody>(null)
   const cosmeticSelection = useMemo(() => createRandomPlayerAppearanceSelection(), [])
 
   const { scene, animations } = useGLTF(bodyModelUrl)
@@ -24,7 +28,7 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
   const { camera } = useThree()
   const { actions } = useAnimations(animations, groupRef)
 
-  // Initialize CharacterControls with the group
+  // Initialize CharacterControls with the group and rigid body ref
   useEffect(() => {
     if (!groupRef.current) {
       return
@@ -32,7 +36,7 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
 
     const shouldReinitialize = !controlsRef.current || controlsRef.current.model !== groupRef.current
     if (shouldReinitialize) {
-      controlsRef.current = new CharacterControls(groupRef.current, camera, actions)
+      controlsRef.current = new CharacterControls(groupRef.current, rigidBodyRef, camera, actions)
       console.log('✅ CharacterControls initialized')
     }
   }, [actions, camera, controlsRef])
@@ -63,13 +67,27 @@ const PlayerModel = ({ controlsRef }: PlayerModelProps) => {
       return
     }
 
-    return attachAccessoriesToBone(clonedScene, HEAD_BONE_NAME, accessories)
+    const detach = attachAccessoriesToBone(clonedScene, HEAD_BONE_NAME, accessories)
+    convertToUnlit(clonedScene)
+    return detach
   }, [accessories, clonedScene])
 
   return (
-    <group ref={groupRef} position={[0, 0, 0]}>
-      <primitive object={clonedScene} />
-    </group>
+    <RigidBody
+      ref={rigidBodyRef}
+      colliders={false}
+      enabledRotations={[false, false, false]}
+      position={[0, 0.05, 0]}
+      type="dynamic"
+      linearDamping={0.5}
+      angularDamping={0.5}
+      gravityScale={GameConfig.GRAVITY_SCALE}
+    >
+      <CapsuleCollider args={[0.6, 0.6]} position={[0, 1.2, 0]} />
+      <group ref={groupRef}>
+        <primitive object={clonedScene} />
+      </group>
+    </RigidBody>
   )
 }
 
@@ -78,6 +96,7 @@ const Player = () => {
   const lastMovementSendTime = useRef<number>(0)
   const movementUpdateInterval = 50 // ms (20 updates per second)
   const controlsRef = useRef<CharacterControls | null>(null)
+  const { world } = useRapier()
 
   useEffect(() => {
     return () => {
@@ -151,6 +170,7 @@ const Player = () => {
         // Join room 1 with username (only once, prevent StrictMode double-call)
         if (!joinedRef.current) {
           joinedRef.current = true
+          // CHANGE TO INTRA LATER
           gameSocket.joinRoom(1, `player_${gameSocket.playerId?.slice(0, 8)}`)
         }
       } catch (error) {
@@ -219,7 +239,7 @@ const Player = () => {
   // Game loop - send updates to server
   useFrame((state, delta) => {
     if (controlsRef.current) {
-      controlsRef.current.update(delta, keysPressed.current)
+      controlsRef.current.update(delta, keysPressed.current, world)
 
       // Send movement/heartbeat 20 times per second (every 50ms) or whenever position changes
       // This also serves as heartbeat to prevent players from being removed as inactive
@@ -236,6 +256,13 @@ const Player = () => {
       }
     }
   })
+
+  // Late game loop - camera updates (priority -1 runs after physics simulation step)
+  useFrame(() => {
+    if (controlsRef.current) {
+      controlsRef.current.updateCamera()
+    }
+  }, -1)
 
   return <PlayerModel controlsRef={controlsRef} />
 }

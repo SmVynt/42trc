@@ -11,6 +11,7 @@ import {
   createRandomPlayerAppearanceSelection,
 } from './utils/playerAppearance'
 import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
+import { convertToUnlit } from './utils/unlitMaterial'
 
 export function OtherPlayers() {
   const { otherPlayers } = usePlayers()
@@ -70,7 +71,9 @@ function OtherPlayerModel({ player }: { player: any }) {
       return
     }
 
-    return attachAccessoriesToBone(clonedScene, HEAD_BONE_NAME, accessories)
+    const detach = attachAccessoriesToBone(clonedScene, HEAD_BONE_NAME, accessories)
+    convertToUnlit(clonedScene)
+    return detach
   }, [accessories, clonedScene])
 
   useEffect(() => {
