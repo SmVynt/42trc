@@ -6,6 +6,7 @@ import { convertToUnlit } from './utils/unlitMaterial'
 import TreesJSON from './spawns/trees.json?url'
 import TreePalmModel from '../../assets/models/envir/tree_palm.glb?url'
 import { SpawnFromJSON } from './utils/SpawnFromJSON'
+import { Water } from './utils/shaders/Water'
 
 const World = () => {
     const { scene } = useGLTF(ground)
@@ -32,6 +33,7 @@ const World = () => {
                 collisionShape="cylinder"
                 collisionArgs={[3, 0.5]}
             />
+            <Water position={[0, 0.25, 0]} width={250} height={250} />
         </>
     )
 }
