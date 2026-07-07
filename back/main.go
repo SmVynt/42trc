@@ -21,6 +21,7 @@ func main() {
 		&models.User{},
 		&models.UserCursus{},
 		&models.UserProject{},
+		&models.GamblingLog{},
 	)
 	if err != nil {
 		log.Fatal("AutoMigrate failed: ", err)
