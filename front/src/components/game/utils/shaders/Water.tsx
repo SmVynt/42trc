@@ -1,7 +1,9 @@
 import React, { useRef, useMemo, useEffect } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame, useThree, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 import { WaterMaterial } from './WaterMaterial'
+// import noiseTextureUrl from '../../../../assets/textures/t_noise_00.png?url'
+import noiseTextureUrl from '../../../../assets/textures/fx/t_noise_00.png?url'
 
 interface WaterProps {
     width?: number
@@ -17,44 +19,52 @@ interface WaterProps {
     foamWidth?: number
     foamSpeed?: number
     foamScale?: number
-    waveSpeed?: [number, number]
-    waveFrequency?: [number, number]
     waveAmplitude?: number
+    waveSpeed1?: [number, number]
+    waveSpeed2?: [number, number]
+    waveScale1?: [number, number]
+    waveScale2?: [number, number]
+    shallowOpacity?: number
+    deepOpacity?: number
 }
 
 export const Water: React.FC<WaterProps> = ({
-    width = 100,
-    height = 100,
-    widthSegments = 64,
-    heightSegments = 64,
+    width = 200,
+    height = 200,
+    widthSegments = 16,
+    heightSegments = 16,
     position = [0, 0, 0],
     rotation = [-Math.PI / 2, 0, 0],
-    shallowColor = '#00d2ff',
-    deepColor = '#003b80',
+    shallowColor = '#39caeb',
+    deepColor = '#0253af',
     foamColor = '#ffffff',
-    maxDepth = 3.0,
-    foamWidth = 0.6,
-    foamSpeed = 0.5,
-    foamScale = 0.4,
-    waveSpeed = [1.0, 0.8],
-    waveFrequency = [0.2, 0.2],
+    maxDepth = 2.5,
+    foamWidth = 0.3,
+    foamSpeed = 5.25,
+    foamScale = 0.2,
     waveAmplitude = 0.15,
+    waveSpeed1 = [0.03, 0.03],
+    waveSpeed2 = [-0.02, 0.02],
+    waveScale1 = [2.0, 2.0],
+    waveScale2 = [3.5, 3.5],
+    shallowOpacity = 0.7,
+    deepOpacity = 1.0,
 }) => {
     const meshRef = useRef<THREE.Mesh>(null)
     const materialRef = useRef<WaterMaterial>(null)
-    
+
     const { gl, scene, camera, size } = useThree()
 
     // 1. Create a WebGLRenderTarget with a depth texture
     const renderTarget = useMemo(() => {
         const depthTexture = new THREE.DepthTexture(size.width, size.height)
-        
+
         const target = new THREE.WebGLRenderTarget(size.width, size.height, {
             minFilter: THREE.NearestFilter,
             magFilter: THREE.NearestFilter,
             format: THREE.RGBAFormat,
         })
-        
+
         target.depthTexture = depthTexture
         return target
     }, [size.width, size.height])
@@ -66,7 +76,21 @@ export const Water: React.FC<WaterProps> = ({
         }
     }, [renderTarget])
 
-    // 2. Initialize the custom shader material
+    // Load the noise texture using Fiber's useLoader
+    const noiseTexture = useLoader(THREE.TextureLoader, noiseTextureUrl)
+
+    // Configure wrapping parameters for seamless scrolling
+    useEffect(() => {
+        if (noiseTexture) {
+            noiseTexture.wrapS = THREE.RepeatWrapping
+            noiseTexture.wrapT = THREE.RepeatWrapping
+            noiseTexture.minFilter = THREE.LinearMipmapLinearFilter
+            noiseTexture.magFilter = THREE.LinearFilter
+            noiseTexture.needsUpdate = true
+        }
+    }, [noiseTexture])
+
+    // 2. Initialize the custom shader material using the single loaded noise texture twice
     const material = useMemo(() => {
         return new WaterMaterial({
             shallowColor,
@@ -76,9 +100,15 @@ export const Water: React.FC<WaterProps> = ({
             foamWidth,
             foamSpeed,
             foamScale,
-            waveSpeed: new THREE.Vector2(waveSpeed[0], waveSpeed[1]),
-            waveFrequency: new THREE.Vector2(waveFrequency[0], waveFrequency[1]),
             waveAmplitude,
+            waveTexture1: noiseTexture,
+            waveTexture2: noiseTexture,
+            waveSpeed1: new THREE.Vector2(waveSpeed1[0], waveSpeed1[1]),
+            waveSpeed2: new THREE.Vector2(waveSpeed2[0], waveSpeed2[1]),
+            waveScale1: new THREE.Vector2(waveScale1[0], waveScale1[1]),
+            waveScale2: new THREE.Vector2(waveScale2[0], waveScale2[1]),
+            shallowOpacity,
+            deepOpacity,
         })
     }, [
         shallowColor,
@@ -88,9 +118,14 @@ export const Water: React.FC<WaterProps> = ({
         foamWidth,
         foamSpeed,
         foamScale,
-        waveSpeed,
-        waveFrequency,
-        waveAmplitude
+        waveAmplitude,
+        noiseTexture,
+        waveSpeed1,
+        waveSpeed2,
+        waveScale1,
+        waveScale2,
+        shallowOpacity,
+        deepOpacity,
     ])
 
     // 3. Keep camera parameters and viewport size in sync with uniforms
@@ -100,8 +135,10 @@ export const Water: React.FC<WaterProps> = ({
             material.cameraFar = camera.far
             material.resolution = new THREE.Vector2(size.width, size.height)
             material.depthTexture = renderTarget.depthTexture
+            material.waveTexture1 = noiseTexture
+            material.waveTexture2 = noiseTexture
         }
-    }, [material, camera.near, camera.far, size.width, size.height, renderTarget])
+    }, [material, camera.near, camera.far, size.width, size.height, renderTarget, noiseTexture])
 
     // 4. Pre-render pass: render scene depth texture, and update dynamic uniforms
     useFrame((state) => {
@@ -115,15 +152,15 @@ export const Water: React.FC<WaterProps> = ({
 
         // Temporarily hide the water plane to avoid self-occlusion in the depth buffer
         currentWater.visible = false
-        
+
         // Render the scene to our depth target
         const originalRenderTarget = gl.getRenderTarget()
         gl.setRenderTarget(renderTarget)
         gl.render(scene, camera)
-        
+
         // Restore standard rendering to screen
         gl.setRenderTarget(originalRenderTarget)
-        
+
         // Restore water plane visibility
         currentWater.visible = true
     })

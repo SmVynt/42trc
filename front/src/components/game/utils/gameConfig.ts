@@ -1,9 +1,9 @@
 export class GameConfig {
 
   // Starting location
-  static readonly START_X = 0
+  static readonly START_X = 40
   static readonly START_Y = 1.05
-  static readonly START_Z = 0
+  static readonly START_Z = 40
 
   // Fixed isometric camera
   static readonly CAMERA_DISTANCE = 14
