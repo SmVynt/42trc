@@ -11,11 +11,11 @@ import { Water } from './utils/shaders/Water'
 const World = () => {
     const { scene } = useGLTF(ground)
 
-    // Clone the ground model and convert it to use unlit MeshBasicMaterials
+    // Clone the ground model and convert it to use unlit materials with its own textures
     const clonedScene = useMemo(() => {
         if (!scene) return null
         const clone = scene.clone()
-        convertToUnlit(clone)
+        convertToUnlit(clone, 'model')
         return clone
     }, [scene])
 

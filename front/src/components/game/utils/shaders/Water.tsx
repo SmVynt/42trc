@@ -2,8 +2,7 @@ import React, { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 import { WaterMaterial } from './WaterMaterial'
-// import noiseTextureUrl from '../../../../assets/textures/t_noise_00.png?url'
-import noiseTextureUrl from '../../../../assets/textures/fx/t_noise_00.png?url'
+import noiseTextureUrl from '../../../../assets/textures/fx/t_noise_01.png?url'
 
 interface WaterProps {
     width?: number
@@ -39,14 +38,14 @@ export const Water: React.FC<WaterProps> = ({
     deepColor = '#0253af',
     foamColor = '#ffffff',
     maxDepth = 2.5,
-    foamWidth = 0.3,
-    foamSpeed = 5.25,
-    foamScale = 0.2,
-    waveAmplitude = 0.15,
-    waveSpeed1 = [0.03, 0.03],
-    waveSpeed2 = [-0.02, 0.02],
-    waveScale1 = [2.0, 2.0],
-    waveScale2 = [3.5, 3.5],
+    foamWidth = 0.2,
+    foamSpeed = 0.00,
+    foamScale = 1.2,
+    waveAmplitude = 0.07,
+    waveSpeed1 = [0.01, 0.01],
+    waveSpeed2 = [-0.008, 0.008],
+    waveScale1 = [6.5, 6.5],
+    waveScale2 = [10.5, 10.5],
     shallowOpacity = 0.7,
     deepOpacity = 1.0,
 }) => {
@@ -55,7 +54,7 @@ export const Water: React.FC<WaterProps> = ({
 
     const { gl, scene, camera, size } = useThree()
 
-    // 1. Create a WebGLRenderTarget with a depth texture
+    // 1. Create a WebGLRenderTarget with a depth texture matching the screen dimensions
     const renderTarget = useMemo(() => {
         const depthTexture = new THREE.DepthTexture(size.width, size.height)
 
@@ -76,7 +75,7 @@ export const Water: React.FC<WaterProps> = ({
         }
     }, [renderTarget])
 
-    // Load the noise texture using Fiber's useLoader
+    // Load the single noise texture using Fiber's useLoader
     const noiseTexture = useLoader(THREE.TextureLoader, noiseTextureUrl)
 
     // Configure wrapping parameters for seamless scrolling
@@ -90,7 +89,7 @@ export const Water: React.FC<WaterProps> = ({
         }
     }, [noiseTexture])
 
-    // 2. Initialize the custom shader material using the single loaded noise texture twice
+    // 2. Initialize the custom shader material using screen-space depth uniforms
     const material = useMemo(() => {
         return new WaterMaterial({
             shallowColor,
@@ -135,12 +134,10 @@ export const Water: React.FC<WaterProps> = ({
             material.cameraFar = camera.far
             material.resolution = new THREE.Vector2(size.width, size.height)
             material.depthTexture = renderTarget.depthTexture
-            material.waveTexture1 = noiseTexture
-            material.waveTexture2 = noiseTexture
         }
-    }, [material, camera.near, camera.far, size.width, size.height, renderTarget, noiseTexture])
+    }, [material, camera.near, camera.far, size.width, size.height, renderTarget])
 
-    // 4. Pre-render pass: render scene depth texture, and update dynamic uniforms
+    // 4. Pre-render pass: render scene depth texture from the main camera's perspective, and update time
     useFrame((state) => {
         if (!meshRef.current || !materialRef.current) return
 
@@ -150,7 +147,7 @@ export const Water: React.FC<WaterProps> = ({
         // Update uTime for animations
         currentMaterial.time = state.clock.getElapsedTime()
 
-        // Temporarily hide the water plane to avoid self-occlusion in the depth buffer
+        // Temporarily hide the water plane to prevent rendering it into the depth texture
         currentWater.visible = false
 
         // Render the scene to our depth target

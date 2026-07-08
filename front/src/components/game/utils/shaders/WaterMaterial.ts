@@ -53,6 +53,7 @@ export class WaterMaterial extends THREE.ShaderMaterial {
             transparent: true,
             depthWrite: false,
             side: THREE.DoubleSide,
+            toneMapped: false,
         })
     }
 

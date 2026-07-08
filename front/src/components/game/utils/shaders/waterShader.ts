@@ -11,6 +11,7 @@ uniform vec2 uWaveScale2;
 varying vec2 vUv;
 varying vec3 vViewPosition;
 varying vec4 vWorldPosition;
+varying float vDisplacement;
 
 void main() {
     vUv = uv;
@@ -28,7 +29,11 @@ void main() {
     float combinedNoise = noise1 * 0.5 + noise2 * 0.5;
     
     // Displace vertices along the local Z axis (world Y)
-    displacedPosition.z += combinedNoise * uWaveAmplitude;
+    float displacement = combinedNoise * uWaveAmplitude;
+    displacedPosition.z += displacement;
+    
+    // Pass displacement to fragment shader to compensate for wave height
+    vDisplacement = displacement;
     
     // Compute view and world space positions
     vec4 modelViewPosition = modelViewMatrix * vec4(displacedPosition, 1.0);
@@ -41,7 +46,7 @@ void main() {
 
 export const waterFragmentShader = `
 uniform float uTime;
-uniform sampler2D uDepthTexture;
+uniform sampler2D uDepthTexture; // screen-space depth texture
 uniform vec2 uResolution;
 uniform float uCameraNear;
 uniform float uCameraFar;
@@ -68,6 +73,7 @@ uniform vec2 uWaveScale2;
 varying vec2 vUv;
 varying vec3 vViewPosition;
 varying vec4 vWorldPosition;
+varying float vDisplacement;
 
 // Convert perspective depth buffer value to linear view-space depth
 float getLinearDepth(float depthVal) {
@@ -96,8 +102,13 @@ void main() {
     float verticalDepth = (cameraPosition.y - vWorldPosition.y) * (depthDiff / waterDepth);
     verticalDepth = max(0.0, verticalDepth);
     
-    // Treat background/sky (where rawDepth is near 1.0) as max depth to avoid foam artifacting
+    // Compensate for the physical vertex wave displacement to get a stable, flat depth value
+    float flatDepth = verticalDepth - vDisplacement;
+    flatDepth = max(0.0, flatDepth);
+    
+    // Treat background/sky (where rawDepth is near 1.0) as max depth
     if (rawDepth >= 0.999) {
+        flatDepth = uMaxDepth;
         verticalDepth = uMaxDepth;
     }
     
@@ -106,38 +117,30 @@ void main() {
     vec2 uv2 = vUv * uWaveScale2 + uTime * uWaveSpeed2;
     float noise1 = texture2D(uWaveTexture1, uv1).r;
     float noise2 = texture2D(uWaveTexture2, uv2).r;
-    float surfaceNoise = noise1 * 0.5 + noise2 * 0.5;
+    float surfaceNoise = noise1 * 0.5 - noise2 * 0.5;
     
     // Dynamic foam threshold using the combined texture noise
     float dynamicFoamWidth = uFoamWidth * (0.3 + 0.7 * surfaceNoise);
     
     // 6. Water color interpolation based on depth
-    float depthFactor = clamp(verticalDepth / uMaxDepth, 0.0, 1.0);
+    float depthFactor = clamp(flatDepth / uMaxDepth, 0.0, 1.0);
     vec3 waterColor = mix(uShallowColor, uDeepColor, depthFactor);
     
     // 7. Shore foam calculation
+    // Distort the depth using the panning noise to create a highly organic, wavy shoreline contour
+    float distortedDepth = flatDepth - surfaceNoise * 0.25;
+    distortedDepth = max(0.0, distortedDepth);
+    
     float foamFactor = 0.0;
-    if (verticalDepth < dynamicFoamWidth) {
-        foamFactor = 1.0 - (verticalDepth / dynamicFoamWidth);
+    if (distortedDepth < uFoamWidth) {
+        foamFactor = 1.0 - (distortedDepth / uFoamWidth);
         foamFactor = smoothstep(0.0, 1.0, foamFactor);
     }
     
-    // Concentric shore waves traveling/rolling towards the shore, modulated by the panned texture noise
-    float wavePos = (verticalDepth + surfaceNoise * 0.15) * 6.0 + uTime * 3.5;
-    float rollingWave = sin(wavePos);
-    
-    // Sharpen the waves into narrow crests and scale down
-    rollingWave = smoothstep(0.7, 1.0, rollingWave) * 0.6;
-    
-    // Fade out rolling waves as they move away from the shore
-    float rollingWaveFade = smoothstep(uFoamWidth * 4.0, 0.0, verticalDepth);
-    rollingWave *= rollingWaveFade;
-    
-    // Combine shore foam and rolling waves
-    float finalFoam = clamp(foamFactor + rollingWave, 0.0, 1.0);
+    // Only use the static shore contact foam
+    float finalFoam = foamFactor;
     
     // Add additional visual texture color variation on the main water body
-    // This makes the panned noise visible on the deep water surface as well
     vec3 waveHighlightColor = vec3(surfaceNoise * 0.08); // Subtle highlight
     vec3 finalColor = mix(waterColor + waveHighlightColor, uFoamColor, finalFoam);
     

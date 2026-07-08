@@ -38,6 +38,7 @@ export function getSharedPaletteMaterial(options: SharedMaterialOptions = {}): T
             transparent,
             opacity,
             side,
+            toneMapped: false,
         })
         materialCache.set(key, material)
     }
