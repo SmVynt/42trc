@@ -18,6 +18,7 @@ func main() {
 
 	err := database.DB.AutoMigrate(
 		&models.Item{},
+		&models.GamblingLog{},
 		&models.User{},
 		&models.UserCursus{},
 		&models.UserProject{},
@@ -37,6 +38,7 @@ func main() {
 		api.GET("/users/levels", handlers.GetLevels(database.DB))
 		api.POST("/auth/oauth/42/callback", handlers.Handle42Callback(database.DB))
 		api.GET("/auth/me", handlers.GetMe(database.DB))
+		api.POST("/gambling/coinflip", handlers.HandleCoinFlip(database.DB))
 	}
 
 	port := os.Getenv("PORT")
