@@ -65,6 +65,7 @@ const Navbar = (): JSX.Element => {
 					<nav style={{ display: 'flex', gap: '8px' }}>
 						<Link to="/" style={linkStyle}>Home</Link>
 						<Link to="/store" style={linkStyle}>Store</Link>
+						<Link to="/gambling" style={linkStyle}>Gambling</Link>
 						<Link to="/user" style={linkStyle}>User</Link>
 						<Link to="/login" style={linkStyle}>Login</Link>
 						<Link to="/game" style={linkStyle}>Game</Link>
@@ -104,6 +105,7 @@ const Navbar = (): JSX.Element => {
 				}}>
 					<Link to="/" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Home</Link>
 					<Link to="/store" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Store</Link>
+					<Link to="/gambling" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Gambling</Link>
 					<Link to="/user" onClick={() => setIsMenuOpen(false)} style={linkStyle}>User</Link>
 					<Link to="/login" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Login</Link>
 					<Link to="/game" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Game</Link>

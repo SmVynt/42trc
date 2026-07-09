@@ -17,6 +17,7 @@ const UserPage = (): JSX.Element => {
       <h1>User</h1>
       <p>user is logged in</p>
       <p style={{ marginTop: 12 }}>{user.email}</p>
+      <p style={{ marginTop: 12 }}>Wallet: {user.wallet ?? 0}</p>
     </main>
   )
 }
