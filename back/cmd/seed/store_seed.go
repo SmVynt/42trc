@@ -1,8 +1,8 @@
-package seed
+package main
 
 import (
 	"log"
-	"transcendence-back/models"
+	"github.com/SmVynt/42trc/back/models"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
