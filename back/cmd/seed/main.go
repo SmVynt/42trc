@@ -8,6 +8,7 @@ import (
 	"github.com/SmVynt/42trc/back/database"
 	"github.com/SmVynt/42trc/back/internal/api42"
 	"github.com/joho/godotenv"
+	"github.com/SmVynt/42trc/back/cmd/seed"
 )
 
 var logins = []string{"nmikuka", "psmolin", "vpushkar", "omizin", "icorrale"}
@@ -22,6 +23,8 @@ func main() {
 	}
 
 	database.Connect()
+
+	seed.InitializeStoreItems(database.DB)
 
 	ctx := context.Background()
 	client, err := api42.NewClient(ctx)

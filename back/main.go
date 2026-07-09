@@ -17,7 +17,7 @@ func main() {
 	database.Connect()
 
 	err := database.DB.AutoMigrate(
-		&models.Item{},
+		&models.Items{},
 		&models.User{},
 		&models.UserCursus{},
 		&models.UserProject{},
