@@ -91,9 +91,11 @@ func decodeGameMessage(message []byte) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	event := codeToEvent[wire.T]
+	event, ok := codeToEvent[wire.T]
+	if !ok {
+		event = "error"
+	}
 	decoded := map[string]interface{}{"event": event}
-
 	switch event {
 	case "player:join":
 		decoded["roomId"] = wire.R
