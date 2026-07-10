@@ -172,6 +172,7 @@ func (c *Client) writePump() {
 
 			data, err := encodeGameMessage(message)
 			if err != nil {
+				_ = writer.Close()
 				return
 			}
 
