@@ -85,7 +85,7 @@ function OtherPlayerModel({ player }: { player: any }) {
 
 	// console.log(player.state, action)
 
-    const shouldLoopOnce = player.state === 'jumping'
+    const shouldLoopOnce = player.state === 'jump'
 
     action.reset()
     action.enabled = true
