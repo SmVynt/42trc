@@ -103,3 +103,11 @@ services:
       - "5173:${FRONT_CONTAINER_PORT:-5173}"
     networks:
       - transcendence
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - transcendence
