@@ -16,8 +16,8 @@ The game world is designed as a warm shared space where players can gather close
 
 ## Tech Stack
 
-- Frontend: React, Three.js
-- Backend: Node.js
+- Frontend: React, Three.js, TypeScript
+- Backend: Go
 - Database: PostgreSQL
 
 ## Getting Started
@@ -34,12 +34,6 @@ Start all services (frontend, backend, game-backend, and postgres database) in d
 make dev
 ```
 Once started, the site will be available at [http://localhost:5173](http://localhost:5173).
-
-### 3. Seed the Database
-To populate the database with initial development mock data:
-```bash
-make seed
-```
 
 ---
 
@@ -58,3 +52,20 @@ Ensure the containers are running, then restore the dump file:
 ```bash
 docker compose exec -T postgres psql -U postgres -d 42trc_game < db_dump.sql
 ```
+
+---
+
+## Database Inspection (Adminer)
+
+A web-based database management tool (Adminer) is included in the development stack.
+
+### How to use Adminer:
+1. Make sure your services are running (`make dev`).
+2. Open [http://localhost:8080](http://localhost:8080) in your browser.
+3. Log in using the following details (configured in your `.env`):
+   - **System:** `PostgreSQL`
+   - **Server:** `postgres`
+   - **Username:** `postgres` *(matching your `DB_USER`)*
+   - **Password:** `postgres` *(matching your `DB_PASSWORD`)*
+   - **Database:** `42trc_game` *(matching your `DB_NAME`)*
+
