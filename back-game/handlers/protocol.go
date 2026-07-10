@@ -148,8 +148,10 @@ func decodeGameMessage(message []byte) (map[string]interface{}, error) {
 
 func encodeWireMessage(message map[string]interface{}) wireMessage {
 	event, _ := message["event"].(string)
-	code := eventToCode[event]
-
+	code, ok := eventToCode[event]
+	if !ok {
+		code = eventToCode["error"]
+	}
 	switch event {
 	case "player:join":
 		return wireMessage{T: code, R: asInt(message["roomId"]), U: asString(message["username"]), I: asString(message["playerId"])}
