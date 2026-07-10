@@ -61,11 +61,12 @@ A web-based database management tool (Adminer) is included in the development st
 
 ### How to use Adminer:
 1. Make sure your services are running (`make dev`).
-2. Open [http://localhost:8080](http://localhost:8080) in your browser.
+2. Open [http://localhost:5173/adminer/](http://localhost:5173/adminer/) in your browser.
 3. Log in using the following details (configured in your `.env`):
    - **System:** `PostgreSQL`
    - **Server:** `postgres`
    - **Username:** `postgres` *(matching your `DB_USER`)*
    - **Password:** `postgres` *(matching your `DB_PASSWORD`)*
    - **Database:** `42trc_game` *(matching your `DB_NAME`)*
+
 
