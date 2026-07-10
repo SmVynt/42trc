@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import Player from './Player'
 import { OtherPlayers } from './OtherPlayers'
 import { GameConfig } from './utils/gameConfig'
-import { Physics, RigidBody } from '@react-three/rapier'
+import { Physics } from '@react-three/rapier'
 import World from './Environment'
 
 const Game = (): JSX.Element => {
