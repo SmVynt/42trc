@@ -1,8 +1,17 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useGLTF, Billboard } from '@react-three/drei'
+import { Billboard, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { usePlayers } from '../../context/players.context'
+import {
+  HEAD_BONE_NAME,
+  attachAccessoriesToBone,
+  cloneAccessories,
+  createRandomPlayerAppearanceSelection,
+} from './utils/playerAppearance'
+import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
+import { convertToUnlit } from './utils/unlitMaterial'
 
 export function OtherPlayers() {
   const { otherPlayers } = usePlayers()
@@ -19,7 +28,10 @@ export function OtherPlayers() {
 
 function OtherPlayerModel({ player }: { player: any }) {
   const meshRef = useRef<THREE.Group>(null)
-  const modelRef = useRef<THREE.Group>(null)
+  const cosmeticSelection = useMemo(
+    () => createRandomPlayerAppearanceSelection(),
+    []
+  )
 
   // Start position (where we were)
   const startPos = useRef<THREE.Vector3>(new THREE.Vector3(player.position.x, player.position.y, player.position.z))
@@ -37,19 +49,54 @@ function OtherPlayerModel({ player }: { player: any }) {
   const startTime = useRef<number>(Date.now())
 
   // Load player model
-  const { scene } = useGLTF('/assets/models/hero/_body.glb')
-  const clonedScene = useMemo(() => scene.clone(), [scene])
+  const { scene, animations } = useGLTF(bodyModelUrl)
+  const { scene: hatScene } = useGLTF(cosmeticSelection.hatUrl)
+  const { scene: glassesScene } = useGLTF(cosmeticSelection.glassesUrl)
+  const { scene: faceScene } = useGLTF(cosmeticSelection.faceUrl)
+  const { actions } = useAnimations(animations, meshRef)
+
+  const clonedScene = useMemo(() => skeletonClone(scene), [scene])
+  const accessories = useMemo(
+    () =>
+      cloneAccessories([
+        { kind: 'hat', scene: hatScene },
+        { kind: 'glasses', scene: glassesScene },
+        { kind: 'face', scene: faceScene },
+      ]),
+    [faceScene, glassesScene, hatScene]
+  )
 
   useEffect(() => {
-    if (modelRef.current) {
-      modelRef.current.add(clonedScene)
+    if (!clonedScene) {
+      return
     }
+
+    const detach = attachAccessoriesToBone(clonedScene, HEAD_BONE_NAME, accessories)
+    convertToUnlit(clonedScene)
+    return detach
+  }, [accessories, clonedScene])
+
+  useEffect(() => {
+    const action = actions?.[player.state] ?? actions?.idle
+
+    if (!action) {
+      return
+    }
+
+	// console.log(player.state, action)
+
+    const shouldLoopOnce = player.state === 'jump'
+
+    action.reset()
+    action.enabled = true
+    action.clampWhenFinished = shouldLoopOnce
+    action.setLoop(shouldLoopOnce ? THREE.LoopOnce : THREE.LoopRepeat, shouldLoopOnce ? 1 : Infinity)
+    action.fadeIn(0.15).play()
+
     return () => {
-      if (modelRef.current) {
-        modelRef.current.clear()
-      }
+      action.fadeOut(0.15)
     }
-  }, [clonedScene])
+  }, [actions, player.state])
 
   // Update target position/rotation when player data changes
   useEffect(() => {
@@ -93,7 +140,7 @@ function OtherPlayerModel({ player }: { player: any }) {
 
   return (
     <group ref={meshRef} position={[player.position.x, player.position.y, player.position.z]}>
-      <group ref={modelRef} />
+      <primitive object={clonedScene} />
       {/* Username label - below player, always facing camera */}
       <Billboard position={[0, 2.5, 0]} scale={0.5}>
         <mesh>

@@ -33,6 +33,7 @@ help:
 	@echo "$(BLUE)$(PROJECT) available targets:$(RESET)"
 	@echo "  make install       Install dependencies for backend, game-server, and frontend"
 	@echo "  make dev           Run the Docker-based development stack"
+	@echo "  make dev-prod      Run the Docker-based development stack with production frontend (no double effect runs)"
 	@echo "  make build         Build the frontend and prepare production assets"
 	@echo "  make prod          Build production Docker image (Nginx)"
 	@echo "  make back-dev      Run the backend in development mode"
@@ -83,6 +84,11 @@ front-preview:
 dev: stop
 	@echo "$(BLUE)Starting the Docker-based development stack...$(RESET)"
 	@NODE_ENV=development HTTP_PORT=$(FRONT_DEV_PORT) FRONT_CONTAINER_PORT=$(FRONT_DEV_PORT) TRC_TARGET=$(TARGET_DEV) docker compose --env-file .env -f $(COMPOSE_FILE) up -d --build
+	@echo "$(GREEN)Site is running. Link: http://localhost:$(FRONT_DEV_PORT)$(RESET)"
+
+dev-prod: stop
+	@echo "$(BLUE)Starting the Docker-based development stack with production frontend...$(RESET)"
+	@NODE_ENV=production HTTP_PORT=$(FRONT_DEV_PORT) FRONT_CONTAINER_PORT=80 TRC_TARGET=$(TARGET_PROD) docker compose --env-file .env -f $(COMPOSE_FILE) up -d --build
 	@echo "$(GREEN)Site is running. Link: http://localhost:$(FRONT_DEV_PORT)$(RESET)"
 
 stop:
@@ -159,4 +165,4 @@ reseed-stars:
 
 re: fclean all
 
-.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs ps seed reseed re
+.PHONY: all help install back-dev back-prod front-dev front-build front-preview dev dev-prod build clean fclean docker-up docker-down docker-logs backend-logs frontend-logs ps seed reseed re

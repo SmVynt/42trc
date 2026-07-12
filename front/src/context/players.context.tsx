@@ -6,12 +6,13 @@ export interface OtherPlayer {
   position: { x: number; y: number; z: number }
   rotation: { y: number }
   lastUpdateTime: number // Track when player was last updated
+  state: 'idle' | 'walk' | 'run' | 'jump' | 'sit'
 }
 
 interface PlayersContextType {
   otherPlayers: Map<string, OtherPlayer>
   addPlayer: (player: OtherPlayer) => void
-  updatePlayerPosition: (playerId: string, position: { x: number; y: number; z: number }, rotation: { y: number }) => void
+  updatePlayerPosition: (playerId: string, position: { x: number; y: number; z: number }, rotation: { y: number }, state?: OtherPlayer['state']) => void
   removePlayer: (playerId: string) => void
   setPlayersInRoom: (players: OtherPlayer[]) => void
   cleanupInactivePlayers: (timeoutMs?: number) => void
@@ -27,12 +28,12 @@ export function PlayersProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const updatePlayerPosition = useCallback(
-    (playerId: string, position: { x: number; y: number; z: number }, rotation: { y: number }) => {
+    (playerId: string, position: { x: number; y: number; z: number }, rotation: { y: number }, state?: OtherPlayer['state']) => {
       setOtherPlayers((prev) => {
         const updated = new Map(prev)
         const player = updated.get(playerId)
         if (player) {
-          updated.set(playerId, { ...player, position, rotation, lastUpdateTime: Date.now() })
+          updated.set(playerId, { ...player, position, rotation, state: state ?? player.state, lastUpdateTime: Date.now() })
         }
         return updated
       })
@@ -54,7 +55,7 @@ export function PlayersProvider({ children }: { children: React.ReactNode }) {
       const updated = new Map(prev)
       for (const [playerId, player] of updated) {
         if (now - player.lastUpdateTime > timeoutMs) {
-          console.log(`🗑️ Removing inactive player: ${playerId}`)
+          console.log(`Removing inactive player: ${playerId}`)
           updated.delete(playerId)
         }
       }

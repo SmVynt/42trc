@@ -31,8 +31,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - transcendence
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -75,10 +73,6 @@ services:
         condition: service_healthy
     networks:
       - transcendence
-    ports:
-      - "5001:5001"
-    expose:
-      - "5001"
 
   frontend:
     build:
@@ -99,7 +93,27 @@ services:
       VITE_42_REDIRECT_URI: ${OAUTH_42_REDIRECT_URI:-http://localhost:5173/login}
       VITE_42_SCOPE: ${OAUTH_42_SCOPE:-public}
       VITE_GAME_SERVER_URL: ${VITE_GAME_SERVER_URL:-http://localhost:5001}
+    networks:
+      - transcendence
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    networks:
+      - transcendence
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "${HTTP_PORT:-80}:80"
+    environment:
+      - FRONT_PORT=${FRONT_CONTAINER_PORT:-5173}
+    volumes:
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      - frontend
+      - backend
+      - backend-game
     networks:
       - transcendence
