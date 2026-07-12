@@ -1,8 +1,18 @@
-import { Suspense, useMemo, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import Game from '../components/game/Game'
 import { PlayersProvider } from '../context/players.context'
+import { useAuth } from '../hooks/useAuth'
 
-const GamePage = () : JSX.Element => {
+const GamePage = () => {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return <main style={{ padding: 24, color: '#f8fafc' }}>Loading game session...</main>
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
 
   return (
 	<PlayersProvider>

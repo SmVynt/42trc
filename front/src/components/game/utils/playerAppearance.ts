@@ -18,10 +18,34 @@ export const HAT_OPTIONS = [hat01Url, hat02Url, hat03Url, hatCrown01Url, hatCrow
 export const GLASSES_OPTIONS = [glasses01Url, glasses02Url, glasses03Url]
 export const FACE_OPTIONS = [face01Url]
 
+export const COSMETICS_MAP: Record<string, string> = {
+  'hat-01': hat01Url,
+  'hat-02': hat02Url,
+  'hat-03': hat03Url,
+  'hat-crown-01': hatCrown01Url,
+  'hat-crown-02': hatCrown02Url,
+  'glasses-01': glasses01Url,
+  'glasses-02': glasses02Url,
+  'glasses-03': glasses03Url,
+  'face-01': face01Url,
+}
+
 export type PlayerAppearanceSelection = {
   hatUrl: string
   glassesUrl: string
   faceUrl: string
+}
+
+export const getPlayerAppearanceFromIDs = (
+  hatId?: string,
+  glassesId?: string,
+  faceId?: string
+): PlayerAppearanceSelection => {
+  return {
+    hatUrl: COSMETICS_MAP[hatId || ''] || hat01Url,
+    glassesUrl: COSMETICS_MAP[glassesId || ''] || glasses01Url,
+    faceUrl: COSMETICS_MAP[faceId || ''] || face01Url,
+  }
 }
 
 export type AccessoryKind = 'hat' | 'glasses' | 'face'

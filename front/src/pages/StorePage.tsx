@@ -2,6 +2,9 @@ import { Suspense, useMemo, useState } from 'react'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { Bounds, Center, Environment, Float, Html, OrbitControls, useGLTF } from '@react-three/drei'
 import { DoubleSide, MeshBasicMaterial, TextureLoader } from 'three'
+import { useAuth } from '../hooks/useAuth'
+import { authService } from '../services/auth/auth.service'
+import { tokenService } from '../storage/token.service'
 
 import bodyModelUrl from '../assets/models/hero/_body.glb?url'
 import faceModelUrl from '../assets/models/clothes/_face_01.glb?url'
@@ -65,7 +68,7 @@ function applyUnlitMaterial(scene, { preserveMap = true } = {}) {
 }
 
 function ItemPreview({ item, selected, rotation = [0, 0, 0], position = [0, 0, 0] }) {
-  const { scene } = useGLTF(item.model)
+  const { scene } = useGLTF(item.model) as any
 
   const model = useMemo(() => {
 	const next = scene.clone(true)
@@ -96,8 +99,8 @@ function ItemPreview({ item, selected, rotation = [0, 0, 0], position = [0, 0, 0
 }
 
 function AvatarPreview({ item }) {
-  const { scene: bodyScene } = useGLTF(bodyModelUrl)
-  const { scene: faceScene } = useGLTF(faceModelUrl)
+  const { scene: bodyScene } = useGLTF(bodyModelUrl) as any
+  const { scene: faceScene } = useGLTF(faceModelUrl) as any
 
   const bodyModel = useMemo(() => applyUnlitMaterial(bodyScene), [bodyScene])
   const faceModel = useMemo(() => applyUnlitMaterial(faceScene), [faceScene])
@@ -169,10 +172,39 @@ function StoreCard({ item, active, onSelect }) {
   )
 }
 
-const StorePage = () : JSX.Element => {
-  const [selectedId, setSelectedId] = useState(ITEMS[1].id)
+const StorePage = () => {
+  const { user, updateUser } = useAuth()
+  const [selectedId, setSelectedId] = useState<string>('hat-01')
+  const [purchaseStatus, setPurchaseStatus] = useState<string>('')
+  const [buying, setBuying] = useState<boolean>(false)
 
   const selectedItem = useMemo(() => ITEMS.find((item) => item.id === selectedId) ?? ITEMS[0], [selectedId])
+
+  const handleBuy = async () => {
+    if (!user) {
+      setPurchaseStatus('You must be logged in to make a purchase.')
+      return
+    }
+
+    const token = tokenService.get()
+    if (!token) {
+      setPurchaseStatus('Auth session not found.')
+      return
+    }
+
+    setBuying(true)
+    setPurchaseStatus('Processing purchase...')
+
+    try {
+      const res = await authService.buyItem(token, selectedItem.id, selectedItem.category, selectedItem.price)
+      updateUser(res.user)
+      setPurchaseStatus('Purchase successful and equipped!')
+    } catch (err: any) {
+      setPurchaseStatus(err?.message || 'Failed to complete purchase.')
+    } finally {
+      setBuying(false)
+    }
+  }
 
   const groupedItems = useMemo(() => {
 	return ITEMS.reduce((groups, item) => {
@@ -214,7 +246,7 @@ const StorePage = () : JSX.Element => {
 			<span style={{ display: 'grid', placeItems: 'center', width: 24, height: 24, borderRadius: '50%', background: '#3a2d27', color: '#fff8ee', fontSize: 14 }}>
 			  ◉
 			</span>
-			<span>{COIN_BALANCE}</span>
+			<span>{user?.wallet ?? 0}</span>
 			<span style={{ fontWeight: 700, color: '#6b5a50' }}>(coin amount)</span>
 		  </div>
 		</div>
@@ -337,23 +369,29 @@ const StorePage = () : JSX.Element => {
 				gap: 10,
 			  }}
 			>
+              {purchaseStatus && (
+                <span style={{ fontSize: 12, color: purchaseStatus.includes('successful') ? '#059669' : '#dc2626', fontWeight: 700, background: 'rgba(255,255,255,0.85)', padding: '4px 8px', borderRadius: '4px' }}>
+                  {purchaseStatus}
+                </span>
+              )}
 			  <button
 				type='button'
-				onClick={() => setSelectedId(selectedItem.id)}
+				onClick={handleBuy}
+				disabled={buying || (user ? user.wallet! < selectedItem.price : true)}
 				style={{
 				  padding: '10px 16px',
 				  borderRadius: 14,
 				  border: '2px solid #46342b',
-				  background: '#f7efe4',
-				  color: '#2f231d',
+				  background: (buying || (user && user.wallet! < selectedItem.price)) ? '#e2e8f0' : '#f7efe4',
+				  color: (buying || (user && user.wallet! < selectedItem.price)) ? '#94a3b8' : '#2f231d',
 				  fontWeight: 900,
 				  letterSpacing: '0.08em',
 				  textTransform: 'uppercase',
 				  boxShadow: '0 10px 24px rgba(52, 36, 26, 0.15)',
-				  cursor: 'pointer',
+				  cursor: (buying || (user && user.wallet! < selectedItem.price)) ? 'not-allowed' : 'pointer',
 				}}
 			  >
-				Buy
+				{buying ? 'Buying...' : 'Buy & Equip'}
 			  </button>
 			</div>
 		  </div>

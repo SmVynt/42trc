@@ -37,6 +37,9 @@ func main() {
 		api.GET("/users/levels", handlers.GetLevels(database.DB))
 		api.POST("/auth/oauth/42/callback", handlers.Handle42Callback(database.DB))
 		api.GET("/auth/me", handlers.GetMe(database.DB))
+		api.POST("/auth/test-login", handlers.HandleTestLogin(database.DB))
+		api.GET("/users/:username/clothing", handlers.GetUserClothing(database.DB))
+		api.POST("/users/me/buy-item", handlers.BuyItem(database.DB))
 	}
 
 	port := os.Getenv("PORT")

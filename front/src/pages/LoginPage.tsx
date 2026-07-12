@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { authService } from '../services/auth/auth.service'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 const FORTY_TWO_AUTHORIZE_URL = 'https://api.intra.42.fr/oauth/authorize'
@@ -51,13 +53,15 @@ const build42AuthorizeUrl = (state: string): string => {
   return `${FORTY_TWO_AUTHORIZE_URL}?${params.toString()}`
 }
 
-const LoginPage = (): JSX.Element => {
+const LoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [status, setStatus] = useState<Status>({
     type: 'idle',
     message: '',
   })
   const [confirmedUser, setConfirmedUser] = useState<User | null>(null)
+  const [testUsername, setTestUsername] = useState<string>('')
+  const { login: setSession } = useAuth()
 
   const navigate = useNavigate()
 
@@ -126,7 +130,7 @@ const LoginPage = (): JSX.Element => {
 
         if (data.token) {
           try {
-            localStorage.setItem('authToken', data.token)
+            setSession(data.token, data.user)
           } catch {
             // ignore storage errors
           }
@@ -180,6 +184,48 @@ const LoginPage = (): JSX.Element => {
     window.location.assign(build42AuthorizeUrl(state))
   }
 
+  const handleTestLogin = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault()
+    if (!testUsername.trim()) {
+      setStatus({
+        type: 'error',
+        message: 'Please enter a test username.',
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+    setStatus({
+      type: 'idle',
+      message: 'Signing in as test user...',
+    })
+
+    try {
+      const data = await authService.testLogin(testUsername.trim())
+      setConfirmedUser(data.user)
+
+      if (data.token) {
+        setSession(data.token, data.user)
+      }
+
+      setStatus({
+        type: 'success',
+        message: `Signed in as test user ${data.user.username}. Redirecting...`,
+      })
+
+      navigate('/user', { replace: true })
+    } catch (requestError: unknown) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'Unknown error'
+      setStatus({
+        type: 'error',
+        message,
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <main style={{ display: 'grid', placeItems: 'center', padding: '48px 20px' }}>
       <section
@@ -213,7 +259,7 @@ const LoginPage = (): JSX.Element => {
             color: '#f8fafc',
           }}
         >
-          Sign in with your 42 account.
+          Sign in to your account.
         </h1>
 
         <p
@@ -224,8 +270,7 @@ const LoginPage = (): JSX.Element => {
             fontSize: '1.02rem',
           }}
         >
-          The email-based workflow has been replaced. You’ll be redirected to the
-          42 authorization screen, then returned here with a session token.
+          Sign in via 42 OAuth or use the test login below to proceed with a test profile.
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '24px' }}>
@@ -244,11 +289,55 @@ const LoginPage = (): JSX.Element => {
               boxShadow: '0 14px 30px rgba(14, 165, 233, 0.25)',
             }}
           >
-            {isSubmitting ? 'Signing in...' : 'Continue with 42'}
+            Continue with 42
           </button>
         </div>
 
-        <p style={{ margin: '16px 0 0', color: '#cbd5e1' }} aria-live="polite">
+        <div style={{ margin: '32px 0 24px', borderTop: '1px solid rgba(255,255,255,0.1)' }} />
+
+        <form onSubmit={handleTestLogin} style={{ display: 'grid', gap: '12px' }}>
+          <label style={{ color: '#7dd3fc', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Login as Test User (Intra Name)
+          </label>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={testUsername}
+              onChange={(e) => setTestUsername(e.target.value)}
+              placeholder="Enter custom Intra name"
+              disabled={isSubmitting}
+              style={{
+                flex: 1,
+                minWidth: '200px',
+                padding: '12px 18px',
+                borderRadius: '999px',
+                border: '1px solid rgba(125, 211, 252, 0.3)',
+                background: 'rgba(15, 23, 42, 0.6)',
+                color: '#f8fafc',
+                fontSize: '1rem',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                borderRadius: '999px',
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#ffffff',
+                padding: '12px 24px',
+                fontWeight: 800,
+                cursor: isSubmitting ? 'wait' : 'pointer',
+                boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)',
+              }}
+            >
+              Sign In as Test
+            </button>
+          </div>
+        </form>
+
+        <p style={{ margin: '24px 0 0', color: '#cbd5e1' }} aria-live="polite">
           {status.message || 'Ready when you are.'}
         </p>
 

@@ -5,7 +5,7 @@ import { useAnimations, useGLTF } from '@react-three/drei'
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { RigidBody, CapsuleCollider, useRapier, RapierRigidBody, RapierCollider } from '@react-three/rapier'
 import { CharacterControls } from './utils/characterControls'
-import { attachAccessoriesToBone, cloneAccessories, createRandomPlayerAppearanceSelection, HEAD_BONE_NAME } from './utils/playerAppearance'
+import { attachAccessoriesToBone, cloneAccessories, getPlayerAppearanceFromIDs, HEAD_BONE_NAME } from './utils/playerAppearance'
 import { gameSocket } from '../../services/gameSocket'
 import { usePlayers } from '../../context/players.context'
 import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
@@ -13,15 +13,18 @@ import { GameConfig } from './utils/gameConfig'
 import { convertToUnlit } from './utils/unlitMaterial'
 
 interface PlayerModelProps {
+  user: any
   controlsRef: React.MutableRefObject<CharacterControls | null>
   controllerRef: React.MutableRefObject<any>
 }
 
-const PlayerModel = ({ controlsRef, controllerRef }: PlayerModelProps) => {
+const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
   const rigidBodyRef = useRef<RapierRigidBody>(null)
   const colliderRef = useRef<RapierCollider>(null)
-  const cosmeticSelection = useMemo(() => createRandomPlayerAppearanceSelection(), [])
+  const cosmeticSelection = useMemo(() => {
+    return getPlayerAppearanceFromIDs(user?.equippedHat, user?.equippedGlasses, user?.equippedFace)
+  }, [user?.equippedHat, user?.equippedGlasses, user?.equippedFace])
 
   const { scene, animations } = useGLTF(bodyModelUrl)
   const { scene: hatScene } = useGLTF(cosmeticSelection.hatUrl)
@@ -100,7 +103,7 @@ const PlayerModel = ({ controlsRef, controllerRef }: PlayerModelProps) => {
   )
 }
 
-const Player = () => {
+const Player = ({ user }: { user: any }) => {
   const keysPressed = useRef<Record<string, boolean>>({})
   const lastMovementSendTime = useRef<number>(0)
   const movementUpdateInterval = 50 // ms (20 updates per second)
@@ -189,8 +192,8 @@ const Player = () => {
         // Join room 1 with username (only once, prevent StrictMode double-call)
         if (!joinedRef.current) {
           joinedRef.current = true
-          // CHANGE TO INTRA LATER
-          gameSocket.joinRoom(1, `player_${gameSocket.playerId?.slice(0, 8)}`)
+          const username = user?.intra || user?.username || `player_${gameSocket.playerId?.slice(0, 8)}`
+          gameSocket.joinRoom(1, username)
         }
       } catch (error) {
         console.error('Failed to connect to game server:', error)
@@ -281,7 +284,7 @@ const Player = () => {
     }
   }, -1)
 
-  return <PlayerModel controlsRef={controlsRef} controllerRef={controllerRef} />
+  return <PlayerModel user={user} controlsRef={controlsRef} controllerRef={controllerRef} />
 }
 
 export default Player
