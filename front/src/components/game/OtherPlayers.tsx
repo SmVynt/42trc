@@ -172,7 +172,7 @@ function OtherPlayerModel({ player }: { player: any }) {
       <Billboard position={[0, 2.5, 0]} scale={0.5}>
         <mesh>
           <planeGeometry args={[1.5, 0.4]} />
-          <meshBasicMaterial map={createTextTexture(player.username)} transparent />
+          <meshBasicMaterial map={createTextTexture(player.username)} transparent depthWrite={false} />
         </mesh>
       </Billboard>
     </group>

@@ -32,6 +32,7 @@ func userResponse(u models.User) gin.H {
 		"equippedHat":     u.EquippedHat,
 		"equippedGlasses": u.EquippedGlasses,
 		"equippedFace":    u.EquippedFace,
+		"ownedItems":      u.OwnedItems,
 		"stats": gin.H{
 			"gamesPlayed": u.GamesPlayed,
 			"wins":        u.Wins,
@@ -266,12 +267,29 @@ func BuyItem(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		if user.Wallet < body.Price {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Insufficient coins."})
-			return
+		// Check if user already owns the item
+		ownedItems := strings.Split(user.OwnedItems, ",")
+		isOwned := false
+		for _, item := range ownedItems {
+			if item == body.ItemID {
+				isOwned = true
+				break
+			}
 		}
 
-		user.Wallet -= body.Price
+		// If not owned, check balance and deduct price
+		if !isOwned {
+			if user.Wallet < body.Price {
+				c.JSON(http.StatusBadRequest, gin.H{"message": "Insufficient coins."})
+				return
+			}
+			user.Wallet -= body.Price
+			if user.OwnedItems == "" {
+				user.OwnedItems = body.ItemID
+			} else {
+				user.OwnedItems = user.OwnedItems + "," + body.ItemID
+			}
+		}
 
 		switch strings.ToLower(body.Category) {
 		case "hats":
