@@ -19,10 +19,10 @@ func NewGamblingService(db *gorm.DB) *GamblingService {
 
 func (s *GamblingService) PlayCoinFlip(userID uint, betAmount int, guess string) (*models.GamblingLog, error) {
 	if betAmount <= 0 {
-		return nil, errors.New("ставка должна быть больше нуля")
+		return nil, errors.New("Bet can be only bigget than 0")
 	}
 	if guess != "heads" && guess != "tails" {
-		return nil, errors.New("выбор должен быть 'heads' (орел) или 'tails' (решка)")
+		return nil, errors.New("You should choose 'tails' or 'heads' only")
 	}
 
 	tx := s.db.Begin()
@@ -35,12 +35,12 @@ func (s *GamblingService) PlayCoinFlip(userID uint, betAmount int, guess string)
 	var user models.User
 	if err := tx.First(&user, userID).Error; err != nil {
 		tx.Rollback()
-		return nil, errors.New("пользователь не найден")
+		return nil, errors.New("User haven't found")
 	}
 
 	if user.Wallet < betAmount {
 		tx.Rollback()
-		return nil, errors.New("недостаточно средств в кошельке (wallet)")
+		return nil, errors.New("Not enought coins (wallet)")
 	}
 
 	user.Wallet -= betAmount
