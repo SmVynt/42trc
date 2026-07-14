@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react'
+import React, { useRef, useMemo, useEffect, useState } from 'react'
 import { useFrame, useThree, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 import { WaterMaterial } from './WaterMaterial'
@@ -51,14 +51,20 @@ export const Water: React.FC<WaterProps> = ({
 }) => {
     const meshRef = useRef<THREE.Mesh>(null)
     const materialRef = useRef<WaterMaterial>(null)
+    const [ready, setReady] = useState(false)
 
     const { gl, scene, camera, size } = useThree()
 
+    // Calculate physical dimensions matching the canvas drawing buffer
+    const pixelRatio = gl.getPixelRatio()
+    const physicalWidth = size.width * pixelRatio
+    const physicalHeight = size.height * pixelRatio
+
     // 1. Create a WebGLRenderTarget with a depth texture matching the screen dimensions
     const renderTarget = useMemo(() => {
-        const depthTexture = new THREE.DepthTexture(size.width, size.height)
+        const depthTexture = new THREE.DepthTexture(physicalWidth, physicalHeight)
 
-        const target = new THREE.WebGLRenderTarget(size.width, size.height, {
+        const target = new THREE.WebGLRenderTarget(physicalWidth, physicalHeight, {
             minFilter: THREE.NearestFilter,
             magFilter: THREE.NearestFilter,
             format: THREE.RGBAFormat,
@@ -66,7 +72,7 @@ export const Water: React.FC<WaterProps> = ({
 
         target.depthTexture = depthTexture
         return target
-    }, [size.width, size.height])
+    }, [physicalWidth, physicalHeight])
 
     // Clean up render target resource on component unmount
     useEffect(() => {
@@ -91,7 +97,7 @@ export const Water: React.FC<WaterProps> = ({
 
     // 2. Initialize the custom shader material using screen-space depth uniforms
     const material = useMemo(() => {
-        return new WaterMaterial({
+        const mat = new WaterMaterial({
             shallowColor,
             deepColor,
             foamColor,
@@ -109,6 +115,14 @@ export const Water: React.FC<WaterProps> = ({
             shallowOpacity,
             deepOpacity,
         })
+
+        // Initialize uniforms immediately to prevent first-frame rendering flicker
+        mat.resolution = new THREE.Vector2(physicalWidth, physicalHeight)
+        mat.depthTexture = renderTarget.depthTexture
+        mat.cameraNear = camera.near
+        mat.cameraFar = camera.far
+
+        return mat
     }, [
         shallowColor,
         deepColor,
@@ -125,17 +139,22 @@ export const Water: React.FC<WaterProps> = ({
         waveScale2,
         shallowOpacity,
         deepOpacity,
+        physicalWidth,
+        physicalHeight,
+        renderTarget,
+        camera.near,
+        camera.far,
     ])
 
-    // 3. Keep camera parameters and viewport size in sync with uniforms
+    // 3. Keep camera parameters and viewport size in sync with uniforms on changes
     useEffect(() => {
         if (material) {
             material.cameraNear = camera.near
             material.cameraFar = camera.far
-            material.resolution = new THREE.Vector2(size.width, size.height)
+            material.resolution = new THREE.Vector2(physicalWidth, physicalHeight)
             material.depthTexture = renderTarget.depthTexture
         }
-    }, [material, camera.near, camera.far, size.width, size.height, renderTarget])
+    }, [material, camera.near, camera.far, physicalWidth, physicalHeight, renderTarget])
 
     // 4. Pre-render pass: render scene depth texture from the main camera's perspective, and update time
     useFrame((state) => {
@@ -158,8 +177,12 @@ export const Water: React.FC<WaterProps> = ({
         // Restore standard rendering to screen
         gl.setRenderTarget(originalRenderTarget)
 
-        // Restore water plane visibility
-        currentWater.visible = true
+        // Restore water plane visibility if ready
+        currentWater.visible = ready
+
+        if (!ready) {
+            setReady(true)
+        }
     })
 
     return (
@@ -167,6 +190,7 @@ export const Water: React.FC<WaterProps> = ({
             ref={meshRef}
             position={position}
             rotation={rotation}
+            visible={ready}
         >
             <planeGeometry args={[width, height, widthSegments, heightSegments]} />
             <primitive object={material} ref={materialRef} attach="material" />
