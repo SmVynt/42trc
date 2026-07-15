@@ -2,6 +2,7 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": false,
+    "jsx": "react-jsx",
     "noEmit": true,
     "ignoreDeprecations": "6.0",
     "jsx": "react-jsx",

@@ -23,6 +23,8 @@ func main() {
 
 	database.Connect()
 
+	InitializeStoreItems(database.DB)
+
 	ctx := context.Background()
 	client, err := api42.NewClient(ctx)
 	if err != nil {

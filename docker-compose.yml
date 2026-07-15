@@ -19,7 +19,7 @@ services:
       - transcendence
     profiles:
       - tools
-      
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -37,7 +37,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-  
+
   backend:
     build:
       context: ./back
