@@ -10,8 +10,7 @@ export interface WaterMaterialParameters {
     foamSpeed?: number
     foamScale?: number
     waveAmplitude?: number
-    waveTexture1?: THREE.Texture | null
-    waveTexture2?: THREE.Texture | null
+    waveTexture?: THREE.Texture | null
     waveSpeed1?: THREE.Vector2
     waveSpeed2?: THREE.Vector2
     waveScale1?: THREE.Vector2
@@ -38,8 +37,7 @@ export class WaterMaterial extends THREE.ShaderMaterial {
             uFoamSpeed: { value: params.foamSpeed ?? 0.5 },
             uFoamScale: { value: params.foamScale ?? 0.4 },
             uWaveAmplitude: { value: params.waveAmplitude ?? 0.15 },
-            uWaveTexture1: { value: params.waveTexture1 ?? null },
-            uWaveTexture2: { value: params.waveTexture2 ?? null },
+            uWaveTexture: { value: params.waveTexture ?? null },
             uWaveSpeed1: { value: params.waveSpeed1 ?? new THREE.Vector2(0.03, 0.03) },
             uWaveSpeed2: { value: params.waveSpeed2 ?? new THREE.Vector2(-0.02, 0.02) },
             uWaveScale1: { value: params.waveScale1 ?? new THREE.Vector2(2.0, 2.0) },
@@ -93,18 +91,11 @@ export class WaterMaterial extends THREE.ShaderMaterial {
         this.uniforms.uCameraFar.value = val
     }
 
-    get waveTexture1(): THREE.Texture | null {
-        return this.uniforms.uWaveTexture1.value
+    get waveTexture(): THREE.Texture | null {
+        return this.uniforms.uWaveTexture.value
     }
-    set waveTexture1(val: THREE.Texture | null) {
-        this.uniforms.uWaveTexture1.value = val
-    }
-
-    get waveTexture2(): THREE.Texture | null {
-        return this.uniforms.uWaveTexture2.value
-    }
-    set waveTexture2(val: THREE.Texture | null) {
-        this.uniforms.uWaveTexture2.value = val
+    set waveTexture(val: THREE.Texture | null) {
+        this.uniforms.uWaveTexture.value = val
     }
 
     get waveSpeed1(): THREE.Vector2 {

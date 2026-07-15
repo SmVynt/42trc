@@ -1,8 +1,7 @@
 export const waterVertexShader = `
 uniform float uTime;
 uniform float uWaveAmplitude;
-uniform sampler2D uWaveTexture1;
-uniform sampler2D uWaveTexture2;
+uniform sampler2D uWaveTexture;
 uniform vec2 uWaveSpeed1;
 uniform vec2 uWaveSpeed2;
 uniform vec2 uWaveScale1;
@@ -22,8 +21,8 @@ void main() {
     vec2 uv2 = uv * uWaveScale2 + uTime * uWaveSpeed2;
     
     // Sample the baked noise textures (r channel is sufficient for height displacement)
-    float noise1 = texture2D(uWaveTexture1, uv1).r;
-    float noise2 = texture2D(uWaveTexture2, uv2).r;
+    float noise1 = texture2D(uWaveTexture, uv1).r;
+    float noise2 = texture2D(uWaveTexture, uv2).r;
     
     // Add the two noise values together
     float combinedNoise = noise1 * 0.5 + noise2 * 0.5;
@@ -63,8 +62,7 @@ uniform float uFoamSpeed;
 uniform float uFoamScale;
 uniform float uWaveAmplitude;
 
-uniform sampler2D uWaveTexture1;
-uniform sampler2D uWaveTexture2;
+uniform sampler2D uWaveTexture;
 uniform vec2 uWaveSpeed1;
 uniform vec2 uWaveSpeed2;
 uniform vec2 uWaveScale1;
@@ -95,16 +93,19 @@ void main() {
     // 4. Calculate depth difference (scene depth - water depth)
     float depthDiff = sceneDepth - waterDepth;
     
-    // Prevent rendering behind the terrain/objects
-    depthDiff = max(0.0, depthDiff);
+    float verticalDepth = uMaxDepth;
+    float flatDepth = uMaxDepth;
     
-    // Convert view-space depth difference to world-space vertical depth difference
-    float verticalDepth = (cameraPosition.y - vWorldPosition.y) * (depthDiff / waterDepth);
-    verticalDepth = max(0.0, verticalDepth);
-    
-    // Compensate for the physical vertex wave displacement to get a stable, flat depth value
-    float flatDepth = verticalDepth - vDisplacement;
-    flatDepth = max(0.0, flatDepth);
+    // Only calculate shoreline depth effects if the scene geometry is actually behind or intersecting the water
+    if (depthDiff >= 0.0) {
+        // Convert view-space depth difference to world-space vertical depth difference
+        verticalDepth = (cameraPosition.y - vWorldPosition.y) * (depthDiff / waterDepth);
+        verticalDepth = max(0.0, verticalDepth);
+        
+        // Compensate for the physical vertex wave displacement to get a stable, flat depth value
+        flatDepth = verticalDepth - vDisplacement;
+        flatDepth = max(0.0, flatDepth);
+    }
     
     // Treat background/sky (where rawDepth is near 1.0) as max depth
     if (rawDepth >= 0.999) {
@@ -115,12 +116,20 @@ void main() {
     // 5. Sample the panning noise textures for the fragment calculations (foam distortion & wave ripples)
     vec2 uv1 = vUv * uWaveScale1 + uTime * uWaveSpeed1;
     vec2 uv2 = vUv * uWaveScale2 + uTime * uWaveSpeed2;
-    float noise1 = texture2D(uWaveTexture1, uv1).r;
-    float noise2 = texture2D(uWaveTexture2, uv2).r;
-    float surfaceNoise = noise1 * 0.5 - noise2 * 0.5;
+    // float noise1 = texture2D(uWaveTexture, uv1).r;
+    // float noise2 = texture2D(uWaveTexture, uv2).r;
+    // float surfaceNoise = noise1 * 0.5 - noise2 * 0.5;
+
+    vec2 displaceWave;
+    displaceWave.x = texture2D(uWaveTexture, uv1).r * 0.1;
+    displaceWave.y = texture2D(uWaveTexture, uv2).r * 0.1;
+
+    float surfaceNoise = texture2D(uWaveTexture, uv2).r;
+    float surfaceWaves = texture2D(uWaveTexture, uv2 + displaceWave).g;
+    float foamNoise = texture2D(uWaveTexture, uv1 * uFoamScale).b * texture2D(uWaveTexture, uv2 * uFoamScale).b;
     
     // Dynamic foam threshold using the combined texture noise
-    float dynamicFoamWidth = uFoamWidth * (0.3 + 0.7 * surfaceNoise);
+    float dynamicFoamWidth = uFoamWidth * (0.3 + 0.7 * foamNoise);
     
     // 6. Water color interpolation based on depth
     float depthFactor = clamp(flatDepth / uMaxDepth, 0.0, 1.0);
@@ -128,7 +137,8 @@ void main() {
     
     // 7. Shore foam calculation
     // Distort the depth using the panning noise to create a highly organic, wavy shoreline contour
-    float distortedDepth = flatDepth - surfaceNoise * 0.25;
+
+    float distortedDepth = flatDepth - foamNoise * uFoamWidth * 8.0;
     distortedDepth = max(0.0, distortedDepth);
     
     float foamFactor = 0.0;
@@ -141,12 +151,18 @@ void main() {
     float finalFoam = foamFactor;
     
     // Add additional visual texture color variation on the main water body
-    vec3 waveHighlightColor = vec3(surfaceNoise * 0.08); // Subtle highlight
+    // vec3 waveHighlightColor = vec3(surfaceWaves * 0.08); // Subtle highlight
+    vec3 waveHighlightColor = vec3(surfaceWaves * 0.4); // Not so subtle highlight
     vec3 finalColor = mix(waterColor + waveHighlightColor, uFoamColor, finalFoam);
     
     // Determine opacity: shallow water is transparent, deep water is opaque, foam is solid
     float baseOpacity = mix(uShallowOpacity, uDeepOpacity, depthFactor);
     float finalOpacity = mix(baseOpacity, 1.0, finalFoam);
+    
+    // Soft intersection fade to smooth out the jagged edges (aliasing) against geometry
+    // and prevent white foam fringes on foreground objects
+    float depthFade = clamp(depthDiff / 0.02, 0.0, 1.0);
+    finalOpacity *= depthFade;
     
     gl_FragColor = vec4(finalColor, finalOpacity);
 }

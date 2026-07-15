@@ -1,11 +1,17 @@
 import { decodeGameMessage, encodeGameMessage, type GameMessage } from '../components/game/utils/gameCodec'
 
 // Native WebSocket implementation (no Socket.IO overhead)
-let gameServerBase = import.meta.env.VITE_GAME_SERVER_URL || ''
-if (!gameServerBase || gameServerBase.startsWith('/') || gameServerBase.includes('localhost:5001')) {
-  gameServerBase = `${window.location.protocol}//${window.location.host}/game`
+const resolveGameServerBase = () => {
+  const configuredBase = import.meta.env.VITE_GAME_SERVER_URL?.trim()
+
+  if (configuredBase) {
+    return configuredBase.replace(/\/$/, '')
+  }
+
+  return `${window.location.origin}/game`
 }
-const GAME_SERVER_BASE = gameServerBase
+
+const GAME_SERVER_BASE = resolveGameServerBase()
 
 // Generate unique player ID
 const generatePlayerId = () => {
