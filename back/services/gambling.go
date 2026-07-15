@@ -19,10 +19,10 @@ func NewGamblingService(db *gorm.DB) *GamblingService {
 
 func (s *GamblingService) PlayCoinFlip(userID uint, betAmount int, guess string) (*models.GamblingLog, error) {
 	if betAmount <= 0 {
-		return nil, errors.New("Bet can be only bigget than 0")
+		return nil, errors.New("bet amount must be greater than zero")
 	}
 	if guess != "heads" && guess != "tails" {
-		return nil, errors.New("You should choose 'tails' or 'heads' only")
+		return nil, errors.New("you must choose either 'heads' or 'tails'")
 	}
 
 	tx := s.db.Begin()
@@ -35,12 +35,12 @@ func (s *GamblingService) PlayCoinFlip(userID uint, betAmount int, guess string)
 	var user models.User
 	if err := tx.First(&user, userID).Error; err != nil {
 		tx.Rollback()
-		return nil, errors.New("User haven't found")
+		return nil, errors.New("user not found")
 	}
 
 	if user.Wallet < betAmount {
 		tx.Rollback()
-		return nil, errors.New("Not enought coins (wallet)")
+		return nil, errors.New("insufficient coins in wallet")
 	}
 
 	user.Wallet -= betAmount
