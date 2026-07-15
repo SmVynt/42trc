@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { RigidBody } from '@react-three/rapier'
 import { useGLTF } from '@react-three/drei'
-import ground from '../../assets/models/envir/ground_00.glb?url'
+import ground from '../../assets/models/envir/ground_01.glb?url'
 import { convertToUnlit } from './utils/unlitMaterial'
 import TreesJSON from './spawns/trees.json?url'
 import TreePalmModel from '../../assets/models/envir/tree_palm.glb?url'

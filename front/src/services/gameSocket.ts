@@ -5,7 +5,16 @@ const resolveGameServerBase = () => {
   const configuredBase = import.meta.env.VITE_GAME_SERVER_URL?.trim()
 
   if (configuredBase) {
-    return configuredBase.replace(/\/$/, '')
+    if (
+      configuredBase.startsWith('http://') ||
+      configuredBase.startsWith('https://') ||
+      configuredBase.startsWith('ws://') ||
+      configuredBase.startsWith('wss://')
+    ) {
+      return configuredBase.replace(/\/$/, '')
+    }
+    // Resolve relative path to absolute URL based on the current origin
+    return `${window.location.origin}${configuredBase.startsWith('/') ? '' : '/'}${configuredBase}`.replace(/\/$/, '')
   }
 
   return `${window.location.origin}/game`
