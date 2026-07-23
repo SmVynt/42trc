@@ -6,7 +6,7 @@ import { GameConfig } from './utils/gameConfig'
 import { Physics } from '@react-three/rapier'
 import World from './Environment'
 
-const Game = (): JSX.Element => {
+const Game = () => {
   return (
     <Canvas camera={{ position: [0, 2, 5], fov: GameConfig.CAMERA_FOV }}>
       <Suspense fallback={null}>

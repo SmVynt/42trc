@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import type { StudentProfile } from '../../types/profile'
 
 type ProfileHeaderProps = {
@@ -19,7 +20,7 @@ const actionLabels: Record<'friend' | 'message' | 'invite', string> = {
   invite: 'Invite to Game',
 }
 
-const ProfileHeader = ({ profile, previewMode, actionMessage, onAction }: ProfileHeaderProps): JSX.Element => {
+const ProfileHeader = ({ profile, previewMode, actionMessage, onAction }: ProfileHeaderProps): ReactElement => {
   const progressPercent = Math.min(100, Math.round((profile.currentXp / profile.nextLevelXp) * 100))
 
   return (
@@ -49,6 +50,10 @@ const ProfileHeader = ({ profile, previewMode, actionMessage, onAction }: Profil
           <div className="profile-meta-row" aria-label="Student quick facts">
             <span>Host: {profile.host}</span>
             <span>Friends: {profile.friends}</span>
+            <span>Projects: {profile.projects}</span>
+            <span>Exams: {profile.exams}</span>
+            <span>Stars: {profile.stars}</span>
+            <span>Points: {profile.points}</span>
             <span>Wallet: {profile.wallet}₳</span>
           </div>
         </div>
@@ -66,6 +71,14 @@ const ProfileHeader = ({ profile, previewMode, actionMessage, onAction }: Profil
         <div className="profile-stat-pill">
           <span>Level</span>
           <strong>{profile.level.toFixed(1)}</strong>
+        </div>
+        <div className="profile-stat-pill">
+          <span>Projects</span>
+          <strong>{profile.projects}</strong>
+        </div>
+        <div className="profile-stat-pill">
+          <span>Points</span>
+          <strong>{profile.points}</strong>
         </div>
         <div className="profile-stat-pill">
           <span>Games</span>

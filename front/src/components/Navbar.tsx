@@ -8,7 +8,7 @@ const linkStyle = {
 	transition: 'background-color 0.2s ease, color 0.2s ease',
 }
 
-const Navbar = (): JSX.Element => {
+const Navbar = () => {
 	const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false)
 	const [isMobile, setIsMobile] = useState<boolean>(false)
 

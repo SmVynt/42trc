@@ -1,4 +1,4 @@
-const HomePage = (): JSX.Element => {
+const HomePage = () => {
   return (
     <main style={{
       display: 'grid',

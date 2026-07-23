@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import type { ProfileActivity } from '../../types/profile'
 
 type ActivityHistoryProps = {
@@ -10,7 +11,7 @@ const resultLabelClass: Record<ProfileActivity['result'], string> = {
   Draw: 'activity-result--draw',
 }
 
-const ActivityHistory = ({ activities }: ActivityHistoryProps): JSX.Element => {
+const ActivityHistory = ({ activities }: ActivityHistoryProps): ReactElement => {
   return (
     <section className="profile-card panel-surface profile-card--tall">
       <p className="profile-kicker profile-kicker--secondary">Recent activity</p>

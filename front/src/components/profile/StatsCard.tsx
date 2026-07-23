@@ -1,3 +1,5 @@
+import type { ReactElement } from 'react'
+
 type StatItem = {
   label: string
   value: string
@@ -10,7 +12,7 @@ type StatsCardProps = {
   items: StatItem[]
 }
 
-const StatsCard = ({ title, eyebrow, description, items }: StatsCardProps): JSX.Element => {
+const StatsCard = ({ title, eyebrow, description, items }: StatsCardProps): ReactElement => {
   return (
     <section className="profile-card panel-surface">
       <p className="profile-kicker profile-kicker--secondary">{eyebrow}</p>

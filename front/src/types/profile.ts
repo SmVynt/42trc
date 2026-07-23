@@ -2,6 +2,15 @@ export type ProfileStatus = 'Online' | 'In-game' | 'Offline'
 
 export type ProfileResult = 'Win' | 'Loss' | 'Draw'
 
+export type UserLevelRecord = {
+  username: string
+  displayname: string
+  level: number
+  projects: number
+  exams: number
+  stars: number
+}
+
 export type ProfileAchievement = {
   id: string
   title: string
@@ -40,6 +49,10 @@ export type StudentProfile = {
   level: number
   currentXp: number
   nextLevelXp: number
+  projects: number
+  exams: number
+  stars: number
+  points: number
   gamesPlayed: number
   wins: number
   winRate: number

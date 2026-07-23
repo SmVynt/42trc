@@ -51,7 +51,7 @@ const build42AuthorizeUrl = (state: string): string => {
   return `${FORTY_TWO_AUTHORIZE_URL}?${params.toString()}`
 }
 
-const LoginPage = (): JSX.Element => {
+const LoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [status, setStatus] = useState<Status>({
     type: 'idle',

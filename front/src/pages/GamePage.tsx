@@ -2,7 +2,7 @@ import { Suspense, useMemo, useState } from 'react'
 import Game from '../components/game/Game'
 import { PlayersProvider } from '../context/players.context'
 
-const GamePage = () : JSX.Element => {
+const GamePage = () => {
 
   return (
 	<PlayersProvider>

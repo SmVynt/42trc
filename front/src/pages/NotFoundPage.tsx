@@ -1,4 +1,4 @@
-const NotFoundPage = (): JSX.Element => {
+const NotFoundPage = () => {
   return (
     <main
       style={{

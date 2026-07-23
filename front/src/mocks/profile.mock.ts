@@ -1,5 +1,5 @@
 import type { User } from '../types/user'
-import type { StudentProfile } from '../types/profile'
+import type { StudentProfile, UserLevelRecord } from '../types/profile'
 
 export const mockStudentProfile: StudentProfile = {
   id: '42-demo-hella',
@@ -14,6 +14,10 @@ export const mockStudentProfile: StudentProfile = {
   level: 12.8,
   currentXp: 640,
   nextLevelXp: 900,
+  projects: 18,
+  exams: 3,
+  stars: 42,
+  points: 1280,
   gamesPlayed: 218,
   wins: 143,
   winRate: 65.6,
@@ -117,9 +121,52 @@ const calculateWinRate = (wins: number, gamesPlayed: number): number => {
   return Math.round((wins / gamesPlayed) * 1000) / 10
 }
 
-export const buildStudentProfile = (user?: User | null): StudentProfile => {
+const deriveLevelProgress = (level: number): Pick<StudentProfile, 'level' | 'currentXp' | 'nextLevelXp'> => {
+  const normalizedLevel = Math.max(0, level)
+  const fractional = normalizedLevel - Math.floor(normalizedLevel)
+
+  return {
+    level: Math.round(normalizedLevel * 10) / 10,
+    currentXp: Math.round(fractional * 1000),
+    nextLevelXp: 1000,
+  }
+}
+
+const resolveLevelRecord = (user?: User | null, levelRecord?: UserLevelRecord | null): UserLevelRecord | null => {
+  if (!user || !levelRecord) {
+    return null
+  }
+
+  const userNames = [user.username, user.intra, user.displayname]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map((value) => value.trim().toLowerCase())
+
+  const recordNames = [levelRecord.username, levelRecord.displayname].map((value) => value.trim().toLowerCase())
+
+  return userNames.some((name) => recordNames.includes(name)) ? levelRecord : null
+}
+
+const resolveProfileStatus = (user?: User | null): StudentProfile['status'] => {
+  if (!user?.lastLoginAt) {
+    return mockStudentProfile.status
+  }
+
+  const lastLoginAt = Date.parse(user.lastLoginAt)
+  if (Number.isNaN(lastLoginAt)) {
+    return mockStudentProfile.status
+  }
+
+  const elapsedMinutes = (Date.now() - lastLoginAt) / 60_000
+  return elapsedMinutes <= 30 ? 'Online' : 'Offline'
+}
+
+export const buildStudentProfile = (user?: User | null, levelRecord?: UserLevelRecord | null): StudentProfile => {
+  const matchedLevelRecord = resolveLevelRecord(user, levelRecord)
   const gamesPlayed = user?.stats?.gamesPlayed ?? mockStudentProfile.gamesPlayed
   const wins = user?.stats?.wins ?? mockStudentProfile.wins
+  const points = user?.stats?.points ?? mockStudentProfile.points
+  const derivedLevel = matchedLevelRecord ? deriveLevelProgress(matchedLevelRecord.level) : null
+  const wallet = user?.wallet ?? mockStudentProfile.wallet
 
   return {
     ...mockStudentProfile,
@@ -127,7 +174,15 @@ export const buildStudentProfile = (user?: User | null): StudentProfile => {
     displayName: user?.displayname?.trim() || mockStudentProfile.displayName,
     intraLogin: user?.intra?.trim() || user?.username?.trim() || mockStudentProfile.intraLogin,
     avatarUrl: user?.image?.trim() || mockStudentProfile.avatarUrl,
-    wallet: user?.wallet ?? mockStudentProfile.wallet,
+    status: resolveProfileStatus(user),
+    wallet,
+    level: derivedLevel?.level ?? mockStudentProfile.level,
+    currentXp: derivedLevel?.currentXp ?? mockStudentProfile.currentXp,
+    nextLevelXp: derivedLevel?.nextLevelXp ?? mockStudentProfile.nextLevelXp,
+    projects: matchedLevelRecord?.projects ?? mockStudentProfile.projects,
+    exams: matchedLevelRecord?.exams ?? mockStudentProfile.exams,
+    stars: matchedLevelRecord?.stars ?? mockStudentProfile.stars,
+    points,
     gamesPlayed,
     wins,
     winRate: calculateWinRate(wins, gamesPlayed),

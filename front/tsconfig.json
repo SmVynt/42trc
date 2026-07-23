@@ -5,7 +5,6 @@
     "jsx": "react-jsx",
     "noEmit": true,
     "ignoreDeprecations": "6.0",
-    "jsx": "react-jsx",
     "target": "ES2020",
     "moduleResolution": "node",
     "esModuleInterop": true

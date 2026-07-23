@@ -8,7 +8,7 @@ import StorePage from './pages/StorePage'
 import GamePage from './pages/GamePage'
 import GamblingPage from './pages/GamblingPage'
 
-const App = (): JSX.Element => {
+const App = () => {
   const router = createBrowserRouter(
     createRoutesFromElements(
       <>

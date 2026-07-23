@@ -15,7 +15,7 @@ const gamblerCardStyle: React.CSSProperties = {
 	color: '#e2e8f0',
 }
 
-const GamblingPage = (): JSX.Element => {
+const GamblingPage = () => {
 	const { user, loading } = useAuth()
 	const [wallet, setWallet] = useState(0)
 	const [betAmount, setBetAmount] = useState(10)

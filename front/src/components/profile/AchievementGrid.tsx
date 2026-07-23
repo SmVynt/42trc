@@ -4,7 +4,7 @@ type AchievementGridProps = {
   achievements: ProfileAchievement[]
 }
 
-const AchievementGrid = ({ achievements }: AchievementGridProps): JSX.Element => {
+const AchievementGrid = ({ achievements }: AchievementGridProps) => {
   return (
     <section className="profile-card panel-surface profile-card--tall">
       <p className="profile-kicker profile-kicker--secondary">Achievement showcase</p>

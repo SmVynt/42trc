@@ -169,7 +169,7 @@ function StoreCard({ item, active, onSelect }) {
   )
 }
 
-const StorePage = () : JSX.Element => {
+const StorePage = () => {
   const [selectedId, setSelectedId] = useState(ITEMS[1].id)
 
   const selectedItem = useMemo(() => ITEMS.find((item) => item.id === selectedId) ?? ITEMS[0], [selectedId])
