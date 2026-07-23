@@ -1,0 +1,472 @@
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+}
+
+.profile-page--loading {
+  place-items: center;
+  min-height: 60vh;
+}
+
+.profile-banner,
+.panel-surface {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.92)),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.16), transparent 32%),
+    radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.14), transparent 30%);
+  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.34);
+  backdrop-filter: blur(18px);
+}
+
+.profile-banner {
+  padding: 16px 20px;
+  color: var(--color-text);
+}
+
+.profile-hero {
+  padding: 28px;
+}
+
+.profile-hero__glow {
+  position: absolute;
+  inset: auto -12% -30% auto;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.28), transparent 68%);
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.profile-hero__topline,
+.profile-hero__body,
+.profile-hero__stats,
+.profile-progress,
+.profile-meta-row {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-hero__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.profile-hero__body {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+}
+
+.profile-avatar {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.profile-avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.profile-status {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.92);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.profile-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 24%, transparent);
+}
+
+.profile-status--online {
+  color: var(--color-success);
+}
+
+.profile-status--ingame {
+  color: var(--color-accent);
+}
+
+.profile-status--offline {
+  color: var(--color-muted);
+}
+
+.profile-hero__identity h1,
+.profile-card h2 {
+  margin: 0;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+}
+
+.profile-hero__identity h1 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.98;
+}
+
+.profile-kicker {
+  margin: 0 0 8px;
+  font-size: 0.74rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.profile-kicker--secondary {
+  color: rgba(125, 211, 252, 0.82);
+}
+
+.profile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.profile-chip--muted {
+  color: #cbd5e1;
+}
+
+.profile-hero__subtitle,
+.profile-card__description,
+.profile-hero__message {
+  margin: 12px 0 0;
+  color: #cbd5e1;
+}
+
+.profile-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.profile-meta-row span,
+.profile-stat-pill,
+.profile-stat-list__item,
+.achievement-card,
+.activity-result {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.profile-meta-row span,
+.profile-stat-pill {
+  padding: 10px 14px;
+  border-radius: 16px;
+  color: #dbeafe;
+}
+
+.profile-meta-row span {
+  font-size: 0.92rem;
+}
+
+.profile-hero__actions {
+  display: grid;
+  gap: 10px;
+  min-width: 180px;
+}
+
+.profile-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.18), rgba(15, 23, 42, 0.96));
+  color: #f8fafc;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.profile-button:hover,
+.profile-button:focus-visible,
+.achievement-card:hover,
+.achievement-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(125, 211, 252, 0.35);
+  outline: none;
+}
+
+.profile-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.profile-stat-pill {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-stat-pill span,
+.profile-stat-list__item dt,
+.profile-progress__label,
+.achievement-card__meta,
+.profile-table th {
+  color: #94a3b8;
+}
+
+.profile-stat-pill strong {
+  font-size: 1.35rem;
+  color: #ffffff;
+}
+
+.profile-progress {
+  margin-top: 20px;
+}
+
+.profile-progress__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.92rem;
+  margin-bottom: 10px;
+}
+
+.profile-progress__track {
+  position: relative;
+  overflow: hidden;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.profile-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-accent), #a855f7 60%, #f472b6 100%);
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.45);
+}
+
+.profile-hero__message {
+  padding: 14px 16px 0;
+  font-size: 0.95rem;
+}
+
+.profile-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.profile-grid-two-up {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 20px;
+}
+
+.profile-card {
+  padding: 24px;
+}
+
+.profile-card--tall {
+  min-height: 100%;
+}
+
+.profile-stat-list {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0 0;
+}
+
+.profile-stat-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.profile-stat-list__item dt {
+  font-size: 0.9rem;
+}
+
+.profile-stat-list__item dd {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: right;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.achievement-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 20px;
+  text-align: left;
+  color: #f8fafc;
+  cursor: help;
+  transition: transform 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+}
+
+.achievement-card--locked {
+  opacity: 0.6;
+}
+
+.achievement-card__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.24), rgba(168, 85, 247, 0.18));
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.achievement-card__title {
+  font-weight: 700;
+}
+
+.achievement-card__meta {
+  font-size: 0.84rem;
+}
+
+.profile-table-wrap {
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.profile-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+.profile-table th,
+.profile-table td {
+  padding: 14px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.profile-table td {
+  color: #e2e8f0;
+}
+
+.activity-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.activity-result::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.activity-result--win {
+  color: var(--color-success);
+}
+
+.activity-result--loss {
+  color: var(--color-danger);
+}
+
+.activity-result--draw {
+  color: var(--color-selected);
+}
+
+@media (max-width: 980px) {
+  .profile-hero__body {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+
+  .profile-hero__actions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .profile-hero__stats,
+  .profile-layout,
+  .profile-grid-two-up {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .profile-hero,
+  .profile-card,
+  .profile-banner {
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .profile-hero__body {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-avatar {
+    width: 96px;
+    height: 96px;
+  }
+
+  .profile-hero__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-hero__topline,
+  .profile-progress__label {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
