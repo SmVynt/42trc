@@ -17,9 +17,7 @@ func main() {
 	withStars := flag.Bool("stars", false, "also fetch stars and exam flag per project")
 	flag.Parse()
 
-	if err := godotenv.Load("../.env"); err != nil {
-		log.Println("no ../.env loaded (continuing with real env):", err)
-	}
+	_ = godotenv.Load(".env", "../.env")
 
 	database.Connect()
 

@@ -1,13 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-const linkStyle = {
-	padding: '10px 14px',
-	borderRadius: '12px',
-	color: '#e2e8f0',
-	transition: 'background-color 0.2s ease, color 0.2s ease',
-}
-
 const Navbar = () => {
 	const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false)
 	const [isMobile, setIsMobile] = useState<boolean>(false)
@@ -36,12 +29,7 @@ const Navbar = () => {
 	}
 
 	return (
-		<header style={{
-			borderBottom: '1px solid rgba(255,255,255,0.08)',
-			background: 'rgba(2, 6, 23, 0.72)',
-			padding: '16px 24px',
-			backdropFilter: 'blur(16px)'
-		}}>
+		<header className="navbar-flat">
 			<div style={{
 				display: 'flex',
 				alignItems: 'center',
@@ -51,11 +39,11 @@ const Navbar = () => {
 				<Link
 					to="/"
 					style={{
-						fontSize: '0.85rem',
-						fontWeight: 700,
-						letterSpacing: '0.3em',
+						fontSize: '1.1rem',
+						fontWeight: 900,
+						letterSpacing: '0.15em',
 						textTransform: 'uppercase',
-						color: '#7dd3fc'
+						color: 'var(--color-accent)'
 					}}
 				>
 					42trc
@@ -63,12 +51,12 @@ const Navbar = () => {
 
 				{!isMobile ? (
 					<nav style={{ display: 'flex', gap: '8px' }}>
-						<Link to="/" style={linkStyle}>Home</Link>
-						<Link to="/store" style={linkStyle}>Store</Link>
-						<Link to="/gambling" style={linkStyle}>Gambling</Link>
-						<Link to="/user" style={linkStyle}>User</Link>
-						<Link to="/login" style={linkStyle}>Login</Link>
-						<Link to="/game" style={linkStyle}>Game</Link>
+						<Link to="/" className="nav-link">Home</Link>
+						<Link to="/store" className="nav-link">Store</Link>
+						<Link to="/gambling" className="nav-link">Gambling</Link>
+						<Link to="/user" className="nav-link">User</Link>
+						<Link to="/login" className="nav-link">Login</Link>
+						<Link to="/game" className="nav-link">Game</Link>
 					</nav>
 				) : (
 					<button
@@ -77,18 +65,15 @@ const Navbar = () => {
 						aria-expanded={isMenuOpen}
 						aria-controls="main-navigation"
 						aria-label="Toggle navigation menu"
+						className="btn-flat"
 						style={{
 							display: 'inline-flex',
 							alignItems: 'center',
 							justifyContent: 'center',
-							width: '44px',
-							height: '44px',
-							borderRadius: '12px',
-							border: '1px solid rgba(255,255,255,0.12)',
-							background: 'rgba(15, 23, 42, 0.92)',
-							color: '#f8fafc',
+							width: '40px',
+							height: '40px',
+							padding: 0,
 							fontSize: '1.1rem',
-							cursor: 'pointer',
 						}}
 					>
 						<span aria-hidden="true">☰</span>
@@ -103,12 +88,12 @@ const Navbar = () => {
 					flexDirection: 'column',
 					gap: '8px'
 				}}>
-					<Link to="/" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Home</Link>
-					<Link to="/store" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Store</Link>
-					<Link to="/gambling" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Gambling</Link>
-					<Link to="/user" onClick={() => setIsMenuOpen(false)} style={linkStyle}>User</Link>
-					<Link to="/login" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Login</Link>
-					<Link to="/game" onClick={() => setIsMenuOpen(false)} style={linkStyle}>Game</Link>
+					<Link to="/" onClick={() => setIsMenuOpen(false)} className="nav-link">Home</Link>
+					<Link to="/store" onClick={() => setIsMenuOpen(false)} className="nav-link">Store</Link>
+					<Link to="/gambling" onClick={() => setIsMenuOpen(false)} className="nav-link">Gambling</Link>
+					<Link to="/user" onClick={() => setIsMenuOpen(false)} className="nav-link">User</Link>
+					<Link to="/login" onClick={() => setIsMenuOpen(false)} className="nav-link">Login</Link>
+					<Link to="/game" onClick={() => setIsMenuOpen(false)} className="nav-link">Game</Link>
 				</nav>
 			) : null}
 		</header>

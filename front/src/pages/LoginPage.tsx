@@ -183,34 +183,32 @@ const LoginPage = () => {
   return (
     <main style={{ display: 'grid', placeItems: 'center', padding: '48px 20px' }}>
       <section
+        className="card-flat"
         style={{
           width: 'min(620px, 100%)',
-          border: '1px solid rgba(125, 211, 252, 0.18)',
-          borderRadius: '28px',
-          background:
-            'linear-gradient(180deg, rgba(15, 23, 42, 0.94) 0%, rgba(15, 23, 42, 0.78) 100%)',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
-          padding: '32px',
+          padding: '40px',
         }}
       >
         <p
           style={{
             margin: '0 0 10px',
-            fontSize: '0.78rem',
+            fontSize: '0.8rem',
+            fontWeight: 800,
             letterSpacing: '0.28em',
             textTransform: 'uppercase',
-            color: '#7dd3fc',
+            color: 'var(--color-accent)',
           }}
         >
-          42 OAuth
+          42 OAuth Authentication
         </p>
 
         <h1
           style={{
             margin: 0,
-            fontSize: 'clamp(2rem, 4vw, 3.4rem)',
+            fontSize: 'clamp(2rem, 4vw, 3.2rem)',
             lineHeight: 1.05,
-            color: '#f8fafc',
+            color: 'var(--color-text)',
+            fontWeight: 900,
           }}
         >
           Sign in with your 42 account.
@@ -218,47 +216,43 @@ const LoginPage = () => {
 
         <p
           style={{
-            margin: '14px 0 0',
+            margin: '16px 0 0',
             maxWidth: '52ch',
-            color: '#cbd5e1',
-            fontSize: '1.02rem',
+            color: 'var(--color-text-muted)',
+            fontSize: '1.05rem',
+            lineHeight: 1.6
           }}
         >
           The email-based workflow has been replaced. You’ll be redirected to the
           42 authorization screen, then returned here with a session token.
         </p>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '24px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '28px' }}>
           <button
             type="button"
             onClick={handle42Login}
             disabled={isSubmitting}
+            className="btn-flat btn-flat--warning"
             style={{
-              borderRadius: '999px',
-              border: '1px solid rgba(255,255,255,0.14)',
-              background: 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)',
-              color: '#08111f',
-              padding: '14px 22px',
-              fontWeight: 800,
-              cursor: isSubmitting ? 'wait' : 'pointer',
-              boxShadow: '0 14px 30px rgba(14, 165, 233, 0.25)',
+              padding: '14px 28px',
+              fontSize: '1.05rem',
             }}
           >
-            {isSubmitting ? 'Signing in...' : 'Continue with 42'}
+            {isSubmitting ? 'Signing in...' : 'Continue with 42 🔑'}
           </button>
         </div>
 
-        <p style={{ margin: '16px 0 0', color: '#cbd5e1' }} aria-live="polite">
+        <p style={{ margin: '20px 0 0', color: 'var(--color-text)', fontWeight: 600 }} aria-live="polite">
           {status.message || 'Ready when you are.'}
         </p>
 
         {confirmedUser ? (
-          <p style={{ margin: '12px 0 0', color: '#e2e8f0' }}>
+          <p style={{ margin: '12px 0 0', color: 'var(--color-text)' }}>
             Signed in as {confirmedUser.email}
           </p>
         ) : null}
 
-        <p style={{ margin: '12px 0 0', color: '#94a3b8', fontSize: '0.92rem' }}>
+        <p style={{ margin: '16px 0 0', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
           Redirect URI: {FORTY_TWO_REDIRECT_URI}
         </p>
       </section>

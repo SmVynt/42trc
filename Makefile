@@ -147,7 +147,7 @@ ps:
 	
 seed:
 	@echo "$(YELLOW)Seeding database from 42 API...$(RESET)"
-	@docker compose -f $(COMPOSE_FILE) run --rm seed go run ./cmd/seed $(STARS)
+	@docker compose --env-file .env -f $(COMPOSE_FILE) run --rm seed go run ./cmd/seed $(STARS)
 	@echo "$(GREEN)Seed complete.$(RESET)"
 
 seed-stars:

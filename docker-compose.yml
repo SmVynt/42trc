@@ -15,6 +15,9 @@ services:
       - .env
     volumes:
       - ./back:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - transcendence
     profiles:

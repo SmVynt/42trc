@@ -127,26 +127,28 @@ function StoreCard({ item, active, onSelect }) {
 		cursor: 'pointer',
 		display: 'grid',
 		gap: 8,
-		padding: 10,
-		borderRadius: 18,
-		border: active ? '2px solid var(--color-selected)' : `2px solid ${style.borderColor}`,
-		background: active ? '#fff6e9' : style.background,
-		boxShadow: active ? '0 16px 28px rgba(40, 25, 14, 0.14)' : '0 10px 20px rgba(32, 22, 15, 0.08)',
+		padding: 12,
+		borderRadius: 'var(--border-radius-md)',
+		border: 'var(--border-width) solid var(--border-color)',
+		background: active ? 'var(--color-selected)' : '#FFFFFF',
+		boxShadow: active ? 'var(--shadow-flat-hover)' : 'var(--shadow-flat)',
+		transform: active ? 'translate(2px, 2px)' : 'none',
+		transition: 'transform 0.1s ease, box-shadow 0.1s ease',
 		minWidth: 116,
 	  }}
 	>
 	  <div
 		style={{
 		  height: 128,
-		  borderRadius: 12,
-		  border: '1px solid rgba(52, 35, 22, 0.12)',
-		  background: 'linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.35))',
+		  borderRadius: 'var(--border-radius-sm)',
+		  border: '1px solid var(--border-color)',
+		  background: '#FAF6EE',
 		  display: 'grid',
 		  placeItems: 'center',
 		  overflow: 'hidden',
 		}}
 	  >
-		<Suspense fallback={<span style={{ fontSize: 12, color: '#7c6a58' }}>Loading</span>}>
+		<Suspense fallback={<span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Loading</span>}>
 		  <Canvas shadows camera={{ position: [0, 0.35, 3.8], fov: 35 }}>
 			{/* <ambientLight intensity={1.7} /> */}
 			{/* <directionalLight position={[2, 2, 3]} intensity={2.2} castShadow /> */}
@@ -161,10 +163,10 @@ function StoreCard({ item, active, onSelect }) {
 		</Suspense>
 	  </div>
 	  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-		<span style={{ fontWeight: 700, color: '#2f241e', fontSize: 14 }}>{item.name}</span>
-		<span style={{ fontWeight: 800, color: '#5b4638', fontSize: 13 }}>{item.price}</span>
+		<span style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: 14 }}>{item.name}</span>
+		<span style={{ fontWeight: 900, color: 'var(--color-accent)', fontSize: 13 }}>{item.price}₳</span>
 	  </div>
-	  <span style={{ fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7b6558' }}>{item.category}</span>
+	  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>{item.category}</span>
 	</button>
   )
 }
@@ -184,18 +186,18 @@ const StorePage = () => {
   }, [])
 
   return (
-	<main
+    <main
 	  style={{
 		display: 'grid',
 		gap: 20,
 		minHeight: 'calc(100vh - 160px)',
 		padding: '8px 0 0',
-		color: '#3a2d27',
+		color: 'var(--color-text)',
 	  }}
 	>
 	  <header style={{ display: 'grid', gap: 6, alignContent: 'start' }}>
 		<div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 14 }}>
-		  <h1 style={{ margin: 0, fontSize: 'clamp(2.2rem, 5vw, 4rem)', letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 0.95 }}>
+		  <h1 style={{ margin: 0, fontSize: 'clamp(2.2rem, 5vw, 4rem)', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 0.95 }}>
 			Store
 		  </h1>
 		  <div
@@ -203,19 +205,19 @@ const StorePage = () => {
 			  display: 'inline-flex',
 			  alignItems: 'center',
 			  gap: 10,
-			  padding: '10px 16px',
-			  borderRadius: 999,
-			  border: '2px solid rgba(58, 45, 39, 0.14)',
-			  background: 'rgba(255, 251, 245, 0.82)',
-			  boxShadow: '0 10px 24px rgba(60, 44, 32, 0.08)',
+			  padding: '8px 16px',
+			  borderRadius: 'var(--border-radius-sm)',
+			  border: 'var(--border-width) solid var(--border-color)',
+			  background: '#FFFFFF',
+			  boxShadow: 'var(--shadow-flat)',
 			  fontWeight: 800,
 			}}
 		  >
-			<span style={{ display: 'grid', placeItems: 'center', width: 24, height: 24, borderRadius: '50%', background: '#3a2d27', color: '#fff8ee', fontSize: 14 }}>
+			<span style={{ display: 'grid', placeItems: 'center', width: 24, height: 24, borderRadius: '50%', background: 'var(--color-selected)', border: '1.5px solid var(--border-color)', color: 'var(--color-text)', fontSize: 14, fontWeight: 900 }}>
 			  ◉
 			</span>
 			<span>{COIN_BALANCE}</span>
-			<span style={{ fontWeight: 700, color: '#6b5a50' }}>(coin amount)</span>
+			<span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>coins</span>
 		  </div>
 		</div>
 	  </header>
@@ -236,13 +238,13 @@ const StorePage = () => {
 			position: 'relative',
 			overflowY: 'auto',
 			overflowX: 'hidden',
-			borderRadius: 28,
-			border: '3px solid rgba(63, 47, 39, 0.35)',
-			background: 'linear-gradient(180deg, rgba(255,255,255,0.88), rgba(250, 240, 228, 0.96))',
-			boxShadow: '0 28px 60px rgba(54, 39, 30, 0.14)',
+			borderRadius: 'var(--border-radius-lg)',
+			border: 'var(--border-width) solid var(--border-color)',
+			background: '#FFFFFF',
+			boxShadow: 'var(--shadow-flat)',
 			minHeight: 0,
 			height: '100%',
-			padding: 20,
+			padding: 24,
 		  }}
 		>
 		  {/* <div
@@ -278,11 +280,11 @@ const StorePage = () => {
 
 		<aside
 		  style={{
-			borderRadius: 28,
-			border: '3px solid rgba(63, 47, 39, 0.35)',
-			background: 'linear-gradient(180deg, rgba(255,255,255,0.88), rgba(248, 239, 231, 0.98))',
-			boxShadow: '0 28px 60px rgba(54, 39, 30, 0.14)',
-			padding: 18,
+			borderRadius: 'var(--border-radius-lg)',
+			border: 'var(--border-width) solid var(--border-color)',
+			background: '#FFFFFF',
+			boxShadow: 'var(--shadow-flat)',
+			padding: 24,
 			display: 'grid',
 			gridTemplateRows: '1fr auto',
 			gap: 16,
@@ -294,17 +296,16 @@ const StorePage = () => {
 		  <div
 			style={{
 			  position: 'relative',
-			  borderRadius: 24,
+			  borderRadius: 'var(--border-radius-md)',
 			  overflow: 'hidden',
-			  border: '2px solid rgba(69, 52, 41, 0.18)',
-			  background:
-				'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.72), transparent 30%), linear-gradient(180deg, #fffdf8 0%, #f3e6d7 100%)',
+			  border: 'var(--border-width) solid var(--border-color)',
+			  background: '#FAF6EE',
 			  minHeight: 0,
 			  height: '100%',
 			}}
 		  >
 			<Canvas shadows camera={{ position: [0, 0.3, 5.2], fov: 34 }}>
-			  <color attach='background' args={['#2c1e52']} />
+			  <color attach='background' args={['#E0F4F7']} />
 			  {/* <fog attach='fog' args={['#f9f1e7', 7, 16]} /> */}
 			  {/* <ambientLight intensity={1.8} /> */}
 			  {/* <directionalLight position={[2, 3, 4]} intensity={2.5} castShadow /> */}
@@ -313,7 +314,7 @@ const StorePage = () => {
 			  <Suspense
 				fallback={
 				  <Html center>
-					<div style={{ padding: '10px 14px', borderRadius: 999, background: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>
+					<div style={{ padding: '10px 14px', borderRadius: 999, border: 'var(--border-width) solid var(--border-color)', background: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>
 					  Loading 3D preview...
 					</div>
 				  </Html>
@@ -340,20 +341,12 @@ const StorePage = () => {
 			  <button
 				type='button'
 				onClick={() => setSelectedId(selectedItem.id)}
+				className="btn-flat btn-flat--accent"
 				style={{
-				  padding: '10px 16px',
-				  borderRadius: 14,
-				  border: '2px solid #46342b',
-				  background: '#f7efe4',
-				  color: '#2f231d',
-				  fontWeight: 900,
-				  letterSpacing: '0.08em',
-				  textTransform: 'uppercase',
-				  boxShadow: '0 10px 24px rgba(52, 36, 26, 0.15)',
-				  cursor: 'pointer',
+				  padding: '10px 20px',
 				}}
 			  >
-				Buy
+				Buy 🛒
 			  </button>
 			</div>
 		  </div>
@@ -368,22 +361,22 @@ const StorePage = () => {
 			}}
 		  >
 			<div style={{ display: 'grid', gap: 2 }}>
-			  <span style={{ fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#8d745f', fontWeight: 800 }}>
+			  <span style={{ fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 800 }}>
 				Selected item
 			  </span>
-			  <strong style={{ fontSize: 22, color: '#2f241e' }}>{selectedItem.name}</strong>
-			  <span style={{ color: '#6f5b4d' }}>{selectedItem.category}</span>
+			  <strong style={{ fontSize: 22, color: 'var(--color-text)' }}>{selectedItem.name}</strong>
+			  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{selectedItem.category}</span>
 			</div>
 			<div
 			  style={{
 				minWidth: 108,
-				padding: '14px 16px',
-				borderRadius: 20,
-				border: '2px solid rgba(70, 52, 43, 0.15)',
-				background: '#fff7ee',
+				padding: '12px 16px',
+				borderRadius: 'var(--border-radius-sm)',
+				border: 'var(--border-width) solid var(--border-color)',
+				background: 'var(--color-selected)',
 				textAlign: 'center',
 				fontWeight: 900,
-				color: '#3b2d25',
+				color: 'var(--color-text)',
 			  }}
 			>
 			  {selectedItem.price} coins
