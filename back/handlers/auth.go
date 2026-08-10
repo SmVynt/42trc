@@ -26,6 +26,7 @@ func userResponse(u models.User) gin.H {
 		"email":           u.Email,
 		"displayname":     u.Displayname,
 		"image":           u.Image,
+		"wallet":          u.Wallet,
 		"emailVerifiedAt": u.EmailVerifiedAt,
 		"lastLoginAt":     u.LastLoginAt,
 		"wallet":          u.Wallet,
