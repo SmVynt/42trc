@@ -29,7 +29,6 @@ func userResponse(u models.User) gin.H {
 		"wallet":          u.Wallet,
 		"emailVerifiedAt": u.EmailVerifiedAt,
 		"lastLoginAt":     u.LastLoginAt,
-		"wallet":          u.Wallet,
 		"equippedHat":     u.EquippedHat,
 		"equippedGlasses": u.EquippedGlasses,
 		"equippedFace":    u.EquippedFace,
