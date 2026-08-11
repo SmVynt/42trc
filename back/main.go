@@ -22,6 +22,7 @@ func main() {
 		&models.User{},
 		&models.UserCursus{},
 		&models.UserProject{},
+		&models.UserInventory{},
 	)
 	if err != nil {
 		log.Fatal("AutoMigrate failed: ", err)
@@ -39,6 +40,12 @@ func main() {
 		api.POST("/auth/oauth/42/callback", handlers.Handle42Callback(database.DB))
 		api.GET("/auth/me", handlers.GetMe(database.DB))
 		api.POST("/gambling/coinflip", handlers.HandleCoinFlip(database.DB))
+	}
+
+	apiV1 := r.Group("/api/v1")
+	{
+		apiV1.GET("/inventory", handlers.GetInventory(database.DB))
+		apiV1.POST("/inventory/sell", handlers.SellInventory(database.DB))
 	}
 
 	port := os.Getenv("PORT")
