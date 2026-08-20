@@ -1,7 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { RigidBody, CylinderCollider, CuboidCollider, BallCollider, CapsuleCollider } from '@react-three/rapier'
 import { useGLTF } from '@react-three/drei'
 import { convertToUnlit } from './unlitMaterial'
+import { WindMaterial } from './shaders/WindMaterial'
+import { sharedPaletteTexture } from './sharedMaterials'
 
 export interface SpawnItem {
     t?: string
@@ -16,6 +20,7 @@ export interface SpawnFromJSONProps {
     hasCollision?: boolean
     collisionShape?: 'trimesh' | 'cylinder' | 'cuboid' | 'ball' | 'capsule'
     collisionArgs?: number[]
+    useWind?: boolean
 }
 
 export const SpawnFromJSON = ({
@@ -23,7 +28,8 @@ export const SpawnFromJSON = ({
     jsonPath,
     hasCollision = false,
     collisionShape = 'trimesh',
-    collisionArgs
+    collisionArgs,
+    useWind = false
 }: SpawnFromJSONProps) => {
     const { scene } = useGLTF(modelUrl)
     const [spawnData, setSpawnData] = useState<SpawnItem[]>([])
@@ -35,20 +41,60 @@ export const SpawnFromJSON = ({
             .catch((err) => console.error('Error fetching spawn JSON:', err))
     }, [jsonPath])
 
-    // Convert the base scene to unlit materials once for efficiency
-    const unlitScene = useMemo(() => {
+    // Convert the base scene to unlit or wind materials once for efficiency
+    const processedScene = useMemo(() => {
         if (!scene) return null
         const clone = scene.clone()
-        convertToUnlit(clone)
+        
+        if (useWind) {
+            clone.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                    const mesh = child as THREE.Mesh
+                    
+                    // Walk up to find the mesh's Y translation offset relative to the cloned root (model space)
+                    let meshOffsetY = 0
+                    let current: THREE.Object3D | null = mesh
+                    while (current && current !== clone) {
+                        meshOffsetY += current.position.y
+                        current = current.parent
+                    }
+
+                    const convertMaterial = (mat: THREE.Material | null | undefined): THREE.Material => {
+                        if (!mat) {
+                            return new WindMaterial({
+                                map: sharedPaletteTexture,
+                                color: new THREE.Color('#ffffff'),
+                                meshOffsetY,
+                            })
+                        }
+                        const standardMat = mat as THREE.MeshStandardMaterial
+                        
+                        return new WindMaterial({
+                            map: standardMat?.map ?? sharedPaletteTexture,
+                            color: standardMat?.color ?? new THREE.Color('#ffffff'),
+                            meshOffsetY,
+                        })
+                    }
+                    if (Array.isArray(mesh.material)) {
+                        mesh.material = (mesh.material as (THREE.Material | null | undefined)[]).map(convertMaterial)
+                    } else {
+                        mesh.material = convertMaterial(mesh.material)
+                    }
+                }
+            })
+        } else {
+            convertToUnlit(clone)
+        }
+        
         return clone
-    }, [scene])
+    }, [scene, useWind])
 
     // Clone and position instances based on JSON properties
     const instances = useMemo(() => {
-        if (!unlitScene || spawnData.length === 0) return []
+        if (!processedScene || spawnData.length === 0) return []
 
         return spawnData.map((item, index) => {
-            const clone = unlitScene.clone()
+            const clone = processedScene.clone()
 
             // Map coordinates: Blender Z is Three.js Y, Blender Y is Three.js Z
             // Note: Blender Y maps to negative Three.js Z because of the Blender GLTF exporter's Z-up to Y-up rotation
@@ -81,7 +127,36 @@ export const SpawnFromJSON = ({
                 scale
             }
         })
-    }, [unlitScene, spawnData])
+    }, [processedScene, spawnData])
+
+    // Gather all wind material instances for animation performance
+    const windMaterials = useMemo(() => {
+        if (!useWind || instances.length === 0) return []
+        const mats: WindMaterial[] = []
+        instances.forEach((inst) => {
+            inst.object.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                    const mesh = child as THREE.Mesh
+                    const meshMats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+                    meshMats.forEach((mat) => {
+                        if (mat instanceof WindMaterial) {
+                            mats.push(mat)
+                        }
+                    })
+                }
+            })
+        })
+        return mats
+    }, [instances, useWind])
+
+    // Animate the wind material time uniform in the frame loop
+    useFrame((state) => {
+        if (!useWind || windMaterials.length === 0) return
+        const time = state.clock.getElapsedTime()
+        for (let i = 0; i < windMaterials.length; i++) {
+            windMaterials[i].time = time
+        }
+    })
 
     const renderCollider = () => {
         if (!collisionArgs) return null

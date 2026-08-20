@@ -7,6 +7,8 @@ import { tokenService } from '../storage/token.service'
 type AuthContextType = {
   user: User | null
   loading: boolean
+  login: (token: string, user: User) => void
+  updateUser: (user: User) => void
   logout: () => void
 }
 
@@ -38,13 +40,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     init()
   }, [])
 
+  const login = (token: string, user: User) => {
+    tokenService.set(token)
+    setUser(user)
+  }
+
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser)
+  }
+
   const logout = () => {
     tokenService.remove()
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

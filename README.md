@@ -1,5 +1,12 @@
 # Transcendence
 
+*authors: nmikuka, omizin, vpushkar, psmolin*
+
+* **nmikuka: [NatimiDev](https://github.com/NatimiDev)**
+* **omizin: [SuPuHe](https://github.com/SuPuHe)**
+* **vpushkar: [Vspaceman11](https://github.com/Vspaceman11)**
+* **psmolin: [SmVynt](https://github.com/SmVynt)**
+
 Transcendence is a cozy multiplayer web game focused on social interaction, character personalization, and shared spaces.
 
 Players create their own accounts, customize their characters, and earn in-game currency through the 42 API based on their school points, projects, and achievements. That currency can then be spent on cosmetics and other customization options.

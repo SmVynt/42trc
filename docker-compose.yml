@@ -84,6 +84,7 @@ services:
         VITE_42_CLIENT_ID: ${OAUTH_42_CLIENT_ID}
         VITE_42_REDIRECT_URI: ${OAUTH_42_REDIRECT_URI:-http://localhost:5173/login}
         VITE_42_SCOPE: ${OAUTH_42_SCOPE:-public}
+        VITE_GAME_SERVER_URL: ${VITE_GAME_SERVER_URL:-/game}
     restart: unless-stopped
     depends_on:
       - backend
@@ -92,7 +93,7 @@ services:
       VITE_42_CLIENT_ID: ${OAUTH_42_CLIENT_ID}
       VITE_42_REDIRECT_URI: ${OAUTH_42_REDIRECT_URI:-http://localhost:5173/login}
       VITE_42_SCOPE: ${OAUTH_42_SCOPE:-public}
-      VITE_GAME_SERVER_URL: ${VITE_GAME_SERVER_URL:-http://localhost:5001}
+      VITE_GAME_SERVER_URL: ${VITE_GAME_SERVER_URL:-/game}
     networks:
       - transcendence
 

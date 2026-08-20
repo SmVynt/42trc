@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Billboard, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -8,7 +8,7 @@ import {
   HEAD_BONE_NAME,
   attachAccessoriesToBone,
   cloneAccessories,
-  createRandomPlayerAppearanceSelection,
+  getPlayerAppearanceFromIDs,
 } from './utils/playerAppearance'
 import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
 import { convertToUnlit } from './utils/unlitMaterial'
@@ -28,10 +28,37 @@ export function OtherPlayers() {
 
 function OtherPlayerModel({ player }: { player: any }) {
   const meshRef = useRef<THREE.Group>(null)
-  const cosmeticSelection = useMemo(
-    () => createRandomPlayerAppearanceSelection(),
-    []
-  )
+  const [clothing, setClothing] = useState<{ hat?: string; glasses?: string; face?: string }>({})
+  const API_BASE = import.meta.env.VITE_API_URL ?? ''
+
+  useEffect(() => {
+    let active = true
+    const fetchClothing = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/users/${player.username}/clothing`)
+        if (res.ok) {
+          const data = await res.json()
+          if (active) {
+            setClothing({
+              hat: data.equippedHat,
+              glasses: data.equippedGlasses,
+              face: data.equippedFace,
+            })
+          }
+        }
+      } catch (err) {
+        // ignore errors for guest/unseeded usernames
+      }
+    }
+    fetchClothing()
+    return () => {
+      active = false
+    }
+  }, [player.username, API_BASE])
+
+  const cosmeticSelection = useMemo(() => {
+    return getPlayerAppearanceFromIDs(clothing.hat, clothing.glasses, clothing.face)
+  }, [clothing])
 
   // Start position (where we were)
   const startPos = useRef<THREE.Vector3>(new THREE.Vector3(player.position.x, player.position.y, player.position.z))
@@ -145,7 +172,7 @@ function OtherPlayerModel({ player }: { player: any }) {
       <Billboard position={[0, 2.5, 0]} scale={0.5}>
         <mesh>
           <planeGeometry args={[1.5, 0.4]} />
-          <meshBasicMaterial map={createTextTexture(player.username)} transparent />
+          <meshBasicMaterial map={createTextTexture(player.username)} transparent depthWrite={false} />
         </mesh>
       </Billboard>
     </group>
