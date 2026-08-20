@@ -7,7 +7,7 @@ import (
 )
 
 type Item struct {
-	ID          string         `gorm:"primaryKey"`
+	ID          string         `gorm:"type:varchar(255);primaryKey"`
 	Name        string         `gorm:"type:varchar(255);not null;index"`
 	Category    string         `gorm:"type:varchar(100);default:'misc';index"`
 	IsSellable  bool           `gorm:"not null;default:false"`
