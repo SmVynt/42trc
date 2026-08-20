@@ -18,10 +18,13 @@ type User struct {
 	PasswordHash    string `gorm:"type:varchar(255)"`
 	EmailVerifiedAt *time.Time
 	LastLoginAt     *time.Time
-	GamesPlayed     int             `gorm:"not null;default:0"`
-	Wins            int             `gorm:"not null;default:0"`
-	Points          int             `gorm:"not null;default:0"`
-	Inventory       []UserInventory `gorm:"foreignKey:UserID"`
+	EquippedHat     string     `gorm:"type:varchar(255);default:''"`
+	EquippedGlasses string     `gorm:"type:varchar(255);default:''"`
+	EquippedFace    string     `gorm:"type:varchar(255);default:''"`
+	OwnedItems      string     `gorm:"type:text;default:''"`
+	GamesPlayed     int        `gorm:"not null;default:0"`
+	Wins            int        `gorm:"not null;default:0"`
+	Points          int        `gorm:"not null;default:0"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }

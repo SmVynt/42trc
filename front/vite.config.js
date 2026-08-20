@@ -13,6 +13,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/game': {
+        target: 'http://backend-game:5001',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
     },
   },
 })
