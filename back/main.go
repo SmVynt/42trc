@@ -23,9 +23,18 @@ func main() {
 		&models.UserCursus{},
 		&models.UserProject{},
 		&models.UserInventory{},
+		&models.Rod{},
+		&models.Fish{},
 	)
 	if err != nil {
 		log.Fatal("AutoMigrate failed: ", err)
+	}
+
+	if err := handlers.CreateRods(database.DB); err != nil {
+		log.Fatal("create rods failed: ", err)
+	}
+	if err := handlers.CreateFish(database.DB); err != nil {
+		log.Fatal("create fish failed: ", err)
 	}
 
 	r := gin.Default()
@@ -43,6 +52,8 @@ func main() {
 		api.GET("/users/:username/clothing", handlers.GetUserClothing(database.DB))
 		api.POST("/users/me/buy-item", handlers.BuyItem(database.DB))
 		api.POST("/gambling/coinflip", handlers.HandleCoinFlip(database.DB))
+		api.POST("/fishing/cast", handlers.CastFish(database.DB))
+		api.GET("/fishing/rods", handlers.GetRods(database.DB))
 	}
 
 	apiV1 := r.Group("/api/v1")
