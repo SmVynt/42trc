@@ -11,6 +11,7 @@ import { usePlayers } from '../../context/players.context'
 import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
 import { GameConfig } from './utils/gameConfig'
 import { convertToUnlit } from './utils/unlitMaterial'
+import { fishingActive } from './fishing/FishingState'
 
 interface PlayerModelProps {
   user: any
@@ -146,6 +147,8 @@ const Player = ({ user }: { user: any }) => {
   // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (fishingActive.current) return   // overlay open → ignore all game keys
+
       const code = e.code
 
       // Prevent default for game keys
@@ -165,6 +168,8 @@ const Player = ({ user }: { user: any }) => {
       }
     }
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (fishingActive.current) return   // overlay open → ignore all game keys
+
       const code = e.code
       if (keysPressed.current[code]) {
         keysPressed.current[code] = false

@@ -1,31 +1,97 @@
 import { useEffect, useRef, useState } from 'react'
+import { fishingActive } from './FishingState'
 
 interface FishingOverlayProps {
   onClose: () => void
 }
 
-// Tuning — adjust for difficulty
-const BAR_HEIGHT = 20        // height of the green bar (% of track)
-const GRAVITY = 0.00012       // how fast the bar falls
-const LIFT = 0.0002          // how fast the bar rises while holding
-const FISH_SPEED = 0.4       // how quickly the fish moves toward its target
-const CATCH_RATE = 0.35      // progress gained per second while in zone
-const ESCAPE_RATE = 0.45     // progress lost per second while out of zone
+interface CaughtFish {
+  id: number
+  name: string
+  speed: number
+  escapeRate: number
+  rarity: number
+}
+
+interface Rod {
+  id: number
+  name: string
+  barHeight: number
+  control: number
+  catchRate: number
+}
+
+// Base handling — rod.control scales lift/gravity
+const BASE_GRAVITY = 0.00012
+const BASE_LIFT = 0.0002
+
+type Status = 'loading' | 'selecting' | 'playing' | 'caught' | 'lost'
 
 const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
-  const [status, setStatus] = useState<'playing' | 'caught' | 'lost'>('playing')
+  const [status, setStatus] = useState<Status>('loading')
+  const [rods, setRods] = useState<Rod[]>([])
+  const [fish, setFish] = useState<CaughtFish | null>(null)
 
-  // Game state lives in refs (changes every frame, no re-render needed)
-  const barPos = useRef(0.5)       // bottom of the bar, 0..1 from bottom to top
+  // Game state (refs — change every frame, no re-render)
+  const barPos = useRef(0.5)
   const barVel = useRef(0)
-  const fishPos = useRef(0.5)      // fish position, 0..1
+  const fishPos = useRef(0.5)
   const fishTarget = useRef(0.5)
-  const progress = useRef(0.4)     // catch progress, 0..1
+  const progress = useRef(0.4)
   const holding = useRef(false)
   const raf = useRef<number>(0)
 
-  // Values used for rendering (updated less often than we compute)
+  // Values pulled from the chosen rod + cast fish
+  const fishSpeed = useRef(0.4)
+  const escapeRate = useRef(0.45)
+  const barHeight = useRef(20)
+  const gravity = useRef(BASE_GRAVITY)
+  const lift = useRef(BASE_LIFT)
+  const catchRate = useRef(0.35)
+
   const [render, setRender] = useState({ bar: 0.5, fish: 0.5, prog: 0.4 })
+
+  useEffect(() => {
+    fishingActive.current = true
+    return () => { fishingActive.current = false }
+  }, [])
+
+  // 1. Load the rod catalog on open
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/fishing/rods')
+      .then((r) => r.json())
+      .then((data: Rod[]) => {
+        if (cancelled) return
+        setRods(data)
+        setStatus('selecting')
+      })
+      .catch(() => { if (!cancelled) setStatus('lost') })
+    return () => { cancelled = true }
+  }, [])
+
+  // 2. Pick a rod → cast for a fish → start playing
+  const chooseRod = (rod: Rod) => {
+    // apply rod params
+    barHeight.current = rod.barHeight
+    catchRate.current = rod.catchRate
+    lift.current = BASE_LIFT * rod.control
+    gravity.current = BASE_GRAVITY / rod.control
+
+    setStatus('loading')
+    fetch('/api/fishing/cast', { method: 'POST' })
+      .then((r) => r.json())
+      .then((data: CaughtFish) => {
+        setFish(data)
+        fishSpeed.current = data.speed
+		escapeRate.current = data.escapeRate
+        // reset round state
+        barPos.current = 0.5; barVel.current = 0
+        fishPos.current = 0.5; progress.current = 0.4
+        setStatus('playing')
+      })
+      .catch(() => setStatus('lost'))
+  }
 
   // Hold input: space or mouse
   useEffect(() => {
@@ -36,8 +102,10 @@ const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
   }, [])
 
-  // Game loop
+  // Game loop — only while playing
   useEffect(() => {
+    if (status !== 'playing') return
+
     let last = performance.now()
     let fishTimer = 0
 
@@ -45,24 +113,25 @@ const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
       const dt = now - last
       last = now
 
-      // 1. Bar: gravity pulls down, holding pushes up
-      barVel.current += holding.current ? LIFT * dt : -GRAVITY * dt
-      barVel.current *= 0.92 // friction
+      // Bar: gravity down, holding up
+      barVel.current += holding.current ? lift.current * dt : -gravity.current * dt
+      barVel.current *= 0.92
       barPos.current += barVel.current
       if (barPos.current < 0) { barPos.current = 0; barVel.current = 0 }
-      if (barPos.current > 1 - BAR_HEIGHT / 100) { barPos.current = 1 - BAR_HEIGHT / 100; barVel.current = 0 }
+      const maxPos = 1 - barHeight.current / 100
+      if (barPos.current > maxPos) { barPos.current = maxPos; barVel.current = 0 }
 
-      // 2. Fish: every ~1.2s pick a new random target and swim toward it
+      // Fish: new random target every ~1.2s
       fishTimer -= dt
       if (fishTimer <= 0) { fishTarget.current = Math.random(); fishTimer = 800 + Math.random() * 1200 }
-      fishPos.current += (fishTarget.current - fishPos.current) * FISH_SPEED * (dt / 1000)
+      fishPos.current += (fishTarget.current - fishPos.current) * fishSpeed.current * (dt / 1000)
 
-      // 3. Is the fish inside the bar's zone?
-      const barTop = barPos.current + BAR_HEIGHT / 100
+      // In zone?
+      const barTop = barPos.current + barHeight.current / 100
       const inZone = fishPos.current >= barPos.current && fishPos.current <= barTop
 
-      // 4. Progress
-      progress.current += (inZone ? CATCH_RATE : -ESCAPE_RATE) * (dt / 1000)
+      // Progress
+      progress.current += (inZone ? catchRate.current : -escapeRate.current) * (dt / 1000)
       if (progress.current >= 1) { setStatus('caught'); return }
       if (progress.current <= 0) { setStatus('lost'); return }
 
@@ -72,7 +141,7 @@ const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
 
     raf.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf.current)
-  }, [])
+  }, [status])
 
   return (
     <div
@@ -94,10 +163,35 @@ const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9db6c6', fontSize: 22, cursor: 'pointer' }}>×</button>
         </div>
 
+        {status === 'loading' && (
+          <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.7 }}>Loading…</div>
+        )}
+
+        {status === 'selecting' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ margin: '0 0 6px', fontSize: 14, opacity: 0.8 }}>Choose a rod:</p>
+            {rods.map((rod) => (
+              <button
+                key={rod.id}
+                onClick={(e) => { e.currentTarget.blur(); chooseRod(rod) }}
+                style={{
+                  textAlign: 'left', padding: '10px 14px', borderRadius: 8,
+                  border: '1px solid #2b7fb8', background: '#0a2e44', color: '#e6f0f6',
+                  cursor: 'pointer', fontSize: 15,
+                }}
+              >
+                <b>{rod.name}</b>
+                <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 8 }}>
+                  zone {rod.barHeight} · ctrl {rod.control}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {status === 'playing' && (
           <>
             <div style={{ display: 'flex', gap: 12, height: 280 }}>
-              {/* Track with the bar and the fish */}
               <div
                 onMouseDown={() => (holding.current = true)}
                 onMouseUp={() => (holding.current = false)}
@@ -107,21 +201,18 @@ const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
                   background: '#0a2e44', borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
                 }}
               >
-                {/* green bar */}
                 <div style={{
                   position: 'absolute', left: 0, right: 0,
-                  bottom: `${render.bar * 100}%`, height: `${BAR_HEIGHT}%`,
+                  bottom: `${render.bar * 100}%`, height: `${barHeight.current}%`,
                   background: 'rgba(76, 209, 122, 0.35)', borderRadius: 6,
                   border: '2px solid #4cd17a',
                 }} />
-                {/* fish */}
                 <div style={{
                   position: 'absolute', left: '50%', transform: 'translate(-50%, 50%)',
                   bottom: `${render.fish * 100}%`, fontSize: 24, lineHeight: 1,
                 }}>🐟</div>
               </div>
 
-              {/* catch progress bar */}
               <div style={{ position: 'relative', width: 14, height: '100%', background: '#0a2e44', borderRadius: 7, overflow: 'hidden' }}>
                 <div style={{
                   position: 'absolute', left: 0, right: 0, bottom: 0,
@@ -139,7 +230,7 @@ const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
         {status === 'caught' && (
           <div style={{ textAlign: 'center', padding: '30px 0' }}>
             <div style={{ fontSize: 48 }}>🐟</div>
-            <p style={{ fontSize: 18, margin: '12px 0 0' }}>Caught it!</p>
+            <p style={{ fontSize: 18, margin: '12px 0 0' }}>Caught a {fish?.name}!</p>
           </div>
         )}
         {status === 'lost' && (
