@@ -43,25 +43,33 @@ services:
       context: ./back
       dockerfile: Dockerfile
     restart: unless-stopped
+    init: true
     env_file:
       - .env
     environment:
-      PORT: "5000"
+      PORT: "${BACKEND_PORT:-5000}"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - transcendence
     expose:
-      - "5000"
+      - "${BACKEND_PORT:-5000}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${BACKEND_PORT:-5000}/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   backend-game:
     build:
       context: ./back-game
       dockerfile: Dockerfile
     restart: unless-stopped
+    init: true
     environment:
-      PORT: "5001"
+      PORT: "${GAME_PORT:-5001}"
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${POSTGRES_DB}
@@ -73,6 +81,14 @@ services:
         condition: service_healthy
     networks:
       - transcendence
+    expose:
+      - "${GAME_PORT:-5001}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${GAME_PORT:-5001}/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   frontend:
     build:
@@ -81,24 +97,34 @@ services:
       target: ${TRC_TARGET:-development}
       args:
         VITE_API_URL: ${VITE_API_URL:-}
-        VITE_42_CLIENT_ID: ${OAUTH_42_CLIENT_ID}
+        VITE_42_CLIENT_ID: ${OAUTH_42_CLIENT_ID:-}
         VITE_42_REDIRECT_URI: ${OAUTH_42_REDIRECT_URI:-http://localhost:5173/login}
         VITE_42_SCOPE: ${OAUTH_42_SCOPE:-public}
         VITE_GAME_SERVER_URL: ${VITE_GAME_SERVER_URL:-/game}
     restart: unless-stopped
-    depends_on:
-      - backend
+    init: true
     environment:
       VITE_API_URL: ${VITE_API_URL:-}
-      VITE_42_CLIENT_ID: ${OAUTH_42_CLIENT_ID}
+      VITE_42_CLIENT_ID: ${OAUTH_42_CLIENT_ID:-}
       VITE_42_REDIRECT_URI: ${OAUTH_42_REDIRECT_URI:-http://localhost:5173/login}
       VITE_42_SCOPE: ${OAUTH_42_SCOPE:-public}
       VITE_GAME_SERVER_URL: ${VITE_GAME_SERVER_URL:-/game}
+    depends_on:
+      backend:
+        condition: service_healthy
     networks:
       - transcendence
+    expose:
+      - "${FRONT_CONTAINER_PORT:-5173}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${FRONT_CONTAINER_PORT:-5173}/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   adminer:
-    image: adminer:latest
+    image: adminer:4.8.1-standalone
     restart: unless-stopped
     networks:
       - transcendence
@@ -106,15 +132,27 @@ services:
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    init: true
     ports:
       - "${HTTP_PORT:-80}:80"
     environment:
-      - FRONT_PORT=${FRONT_CONTAINER_PORT:-5173}
+      FRONT_PORT: ${FRONT_CONTAINER_PORT:-5173}
+      BACKEND_PORT: ${BACKEND_PORT:-5000}
+      GAME_PORT: ${GAME_PORT:-5001}
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     depends_on:
-      - frontend
-      - backend
-      - backend-game
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+      backend-game:
+        condition: service_healthy
     networks:
       - transcendence
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
