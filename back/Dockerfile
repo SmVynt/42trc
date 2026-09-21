@@ -1,26 +1,26 @@
-# --- build stage ---
+# syntax=docker/dockerfile:1.7
+
 FROM golang:1.26-alpine AS build
 
-WORKDIR /app
+WORKDIR /src
 
-# Cache deps first
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-# Build the server binary
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /server .
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /server .
 
-# --- run stage ---
 FROM alpine:3.20
 
+RUN apk add --no-cache ca-certificates \
+    && addgroup -S app \
+    && adduser -S -G app app
+
 WORKDIR /app
+COPY --from=build --chown=app:app /server /app/server
 
-# CA certs for outbound HTTPS (42 API)
-RUN apk add --no-cache ca-certificates
-
-COPY --from=build /server /server
-
+USER app
 EXPOSE 5000
-
-CMD ["/server"]
+ENTRYPOINT ["/app/server"]
