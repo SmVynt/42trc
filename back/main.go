@@ -54,6 +54,7 @@ func main() {
 		api.POST("/gambling/coinflip", handlers.HandleCoinFlip(database.DB))
 		api.POST("/fishing/cast", handlers.CastFish(database.DB))
 		api.GET("/fishing/rods", handlers.GetRods(database.DB))
+		api.POST("/fishing/equip", handlers.EquipRod(database.DB))
 	}
 
 	apiV1 := r.Group("/api/v1")

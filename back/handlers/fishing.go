@@ -3,7 +3,9 @@ package handlers
 import (
 	"math/rand"
 	"net/http"
+	"strings"
 
+	"github.com/SmVynt/42trc/back/internal/auth"
 	"github.com/SmVynt/42trc/back/models"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -84,4 +86,60 @@ func CreateFish(db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+// EquipRod stores which rod the current user has equipped.
+func EquipRod(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		token := ""
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+		if token == "" {
+			token = c.Query("token")
+		}
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Missing auth token."})
+			return
+		}
+
+		claims, err := auth.ParseSessionToken(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid or expired token."})
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", claims.Email).First(&user).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": "User not found."})
+			return
+		}
+
+		var body struct {
+			RodID uint `json:"rodId"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request body."})
+			return
+		}
+
+		// verify the rod exists
+		var rod models.Rod
+		if err := db.First(&rod, body.RodID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": "Rod not found."})
+			return
+		}
+
+		user.EquippedRodID = &rod.ID
+		if err := db.Save(&user).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to equip rod."})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Rod equipped.",
+			"user":    userResponse(user),
+		})
+	}
 }
