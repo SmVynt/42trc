@@ -9,6 +9,7 @@ export type User = {
   equippedHat?: string
   equippedGlasses?: string
   equippedFace?: string
+  equippedRodId: number | null
   ownedItems?: string
   stats?: {
     gamesPlayed: number

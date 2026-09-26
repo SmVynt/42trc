@@ -32,4 +32,15 @@ export const authService = {
       body: JSON.stringify({ itemId, category, price }),
     })
   },
+
+  async equipRod(token: string, rodId: number): Promise<{ user: User; message: string }> {
+    return await http<{ user: User; message: string }>('/api/fishing/equip', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ rodId }),
+    })
+  },
 }

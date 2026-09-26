@@ -8,18 +8,26 @@ import { GameConfig } from './utils/gameConfig'
 import World from './Environment'
 import { useAuth } from '../../hooks/useAuth'
 import FishingOverlay from './fishing/FishingOverlay'
+import InventoryOverlay from './InventoryOverlay'
 
 const Game = () => {
   const { user } = useAuth()
   const [fishingOpen, setFishingOpen] = useState(false)
-
+  const [inventoryOpen, setInventoryOpen] = useState(false)
+  const [equippedRodId, setEquippedRodId] = useState<number | null>(null)
   useEffect(() => {
   const onKey = (e: KeyboardEvent) => {
     if (e.code === 'KeyF') setFishingOpen((v) => !v)
-    }
+    if (e.code === 'KeyI') setInventoryOpen((v) => !v)
+    if (e.code === 'Escape') { setFishingOpen(false); setInventoryOpen(false) }
+  }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  useEffect(() => {
+    if (user?.equippedRodId != null) setEquippedRodId(user.equippedRodId)
+  }, [user])
 
   return (
     <>
@@ -54,7 +62,14 @@ const Game = () => {
       Fish
     </button>
     
-    {fishingOpen && <FishingOverlay onClose={() => setFishingOpen(false)} />}
+    {fishingOpen && <FishingOverlay  equippedRodId={equippedRodId} onClose={() => setFishingOpen(false)} />}
+    {inventoryOpen && (
+        <InventoryOverlay
+          equippedRodId={equippedRodId}
+          onEquip={setEquippedRodId}
+          onClose={() => setInventoryOpen(false)}
+        />
+      )}
     </>
   )
 }

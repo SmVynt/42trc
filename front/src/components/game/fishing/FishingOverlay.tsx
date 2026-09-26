@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { fishingActive } from './FishingState'
 
 interface FishingOverlayProps {
+  equippedRodId: number | null
   onClose: () => void
 }
 
@@ -25,11 +26,10 @@ interface Rod {
 const BASE_GRAVITY = 0.00012
 const BASE_LIFT = 0.0002
 
-type Status = 'loading' | 'selecting' | 'playing' | 'caught' | 'lost'
+type Status = 'loading' | 'no-rod' | 'playing' | 'caught' | 'lost'
 
-const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
+const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
   const [status, setStatus] = useState<Status>('loading')
-  const [rods, setRods] = useState<Rod[]>([])
   const [fish, setFish] = useState<CaughtFish | null>(null)
 
   // Game state (refs — change every frame, no re-render)
@@ -56,42 +56,38 @@ const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
     return () => { fishingActive.current = false }
   }, [])
 
-  // 1. Load the rod catalog on open
+  // On open: no rod -> stop; otherwise load rods, apply the equipped one, then cast
   useEffect(() => {
+    if (equippedRodId == null) { setStatus('no-rod'); return }
+ 
     let cancelled = false
     fetch('/api/fishing/rods')
       .then((r) => r.json())
-      .then((data: Rod[]) => {
+      .then((rods: Rod[]) => {
         if (cancelled) return
-        setRods(data)
-        setStatus('selecting')
+        const rod = rods.find((r) => r.id === equippedRodId)
+        if (!rod) { setStatus('no-rod'); return }
+ 
+        barHeight.current = rod.barHeight
+        catchRate.current = rod.catchRate
+        lift.current = BASE_LIFT * rod.control
+        gravity.current = BASE_GRAVITY / rod.control
+ 
+        return fetch('/api/fishing/cast', { method: 'POST' })
+          .then((r) => r.json())
+          .then((data: CaughtFish) => {
+            if (cancelled) return
+            setFish(data)
+            fishSpeed.current = data.speed
+            escapeRate.current = data.escapeRate
+            barPos.current = 0.5; barVel.current = 0
+            fishPos.current = 0.5; progress.current = 0.4
+            setStatus('playing')
+          })
       })
-      .catch(() => { if (!cancelled) setStatus('lost') })
+      .catch((e) => { if (!cancelled) { console.error('fishing failed:', e); setStatus('lost') } })
     return () => { cancelled = true }
-  }, [])
-
-  // 2. Pick a rod → cast for a fish → start playing
-  const chooseRod = (rod: Rod) => {
-    // apply rod params
-    barHeight.current = rod.barHeight
-    catchRate.current = rod.catchRate
-    lift.current = BASE_LIFT * rod.control
-    gravity.current = BASE_GRAVITY / rod.control
-
-    setStatus('loading')
-    fetch('/api/fishing/cast', { method: 'POST' })
-      .then((r) => r.json())
-      .then((data: CaughtFish) => {
-        setFish(data)
-        fishSpeed.current = data.speed
-		escapeRate.current = data.escapeRate
-        // reset round state
-        barPos.current = 0.5; barVel.current = 0
-        fishPos.current = 0.5; progress.current = 0.4
-        setStatus('playing')
-      })
-      .catch(() => setStatus('lost'))
-  }
+  }, [equippedRodId])
 
   // Hold input: space or mouse
   useEffect(() => {
@@ -165,28 +161,6 @@ const FishingOverlay = ({ onClose }: FishingOverlayProps) => {
 
         {status === 'loading' && (
           <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.7 }}>Loading…</div>
-        )}
-
-        {status === 'selecting' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <p style={{ margin: '0 0 6px', fontSize: 14, opacity: 0.8 }}>Choose a rod:</p>
-            {rods.map((rod) => (
-              <button
-                key={rod.id}
-                onClick={(e) => { e.currentTarget.blur(); chooseRod(rod) }}
-                style={{
-                  textAlign: 'left', padding: '10px 14px', borderRadius: 8,
-                  border: '1px solid #2b7fb8', background: '#0a2e44', color: '#e6f0f6',
-                  cursor: 'pointer', fontSize: 15,
-                }}
-              >
-                <b>{rod.name}</b>
-                <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 8 }}>
-                  zone {rod.barHeight} · ctrl {rod.control}
-                </span>
-              </button>
-            ))}
-          </div>
         )}
 
         {status === 'playing' && (
