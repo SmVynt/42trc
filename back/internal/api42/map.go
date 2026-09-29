@@ -46,6 +46,13 @@ func projectToModel(userID uint, pu ProjectUser, stars int, exam bool) models.Us
 	var cursusID *int
 	if len(pu.CursusIDs) > 0 {
 		cursusID = &pu.CursusIDs[0]
+		for _, id := range pu.CursusIDs {
+			if id == coreCursusID {
+				coreID := coreCursusID
+				cursusID = &coreID
+				break
+			}
+		}
 	}
 
 	return models.UserProject{

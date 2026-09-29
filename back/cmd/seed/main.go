@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
+	"strconv"
 
 	"github.com/SmVynt/42trc/back/database"
 	"github.com/SmVynt/42trc/back/internal/api42"
@@ -17,8 +19,8 @@ func main() {
 	withStars := flag.Bool("stars", false, "also fetch stars and exam flag per project")
 	flag.Parse()
 
-	if err := godotenv.Load("../.env"); err != nil {
-		log.Println("no ../.env loaded (continuing with real env):", err)
+	if err := godotenv.Load("../.env"); err != nil && !os.IsNotExist(err) {
+		log.Println("could not load ../.env (continuing with real env):", err)
 	}
 
 	database.Connect()
@@ -31,6 +33,22 @@ func main() {
 		log.Fatal("failed to create 42 client: ", err)
 	}
 
+	if campusID := seedCampusID(); campusID > 0 {
+		logins, fetchErr := client.FetchCampusUserLogins(ctx, campusID)
+		if fetchErr != nil {
+			log.Fatal("failed to fetch campus users: ", fetchErr)
+		}
+		log.Printf("campus %d: selected %d active student logins", campusID, len(logins))
+		if len(logins) == 0 {
+			log.Fatal("campus user list is empty")
+		}
+		if err := client.SeedLogins(ctx, database.DB, logins, *withStars); err != nil {
+			log.Fatal("seed failed: ", err)
+		}
+		log.Println("Done.")
+		return
+	}
+
 	mode := "fast (profile/level/projects)"
 	if *withStars {
 		mode = "full (+ stars & exam)"
@@ -41,4 +59,16 @@ func main() {
 		log.Fatal("seed failed: ", err)
 	}
 	log.Println("Done.")
+}
+
+func seedCampusID() int {
+	raw := os.Getenv("SEED_CAMPUS_ID")
+	if raw == "" {
+		return 0
+	}
+	id, err := strconv.Atoi(raw)
+	if err != nil || id <= 0 {
+		log.Fatalf("invalid SEED_CAMPUS_ID: %q", raw)
+	}
+	return id
 }
