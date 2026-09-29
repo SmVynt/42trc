@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -13,6 +15,9 @@ func (c *Client) get(ctx context.Context, path string, out interface{}) error {
 	var lastErr error
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if err := c.waitForRequest(ctx); err != nil {
+			return err
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL+path, nil)
 		if err != nil {
 			return err
@@ -22,15 +27,24 @@ func (c *Client) get(ctx context.Context, path string, out interface{}) error {
 		res, err := httpClient.Do(req)
 		if err != nil {
 			lastErr = err
-			time.Sleep(time.Duration(attempt) * time.Second)
+			if waitErr := wait(ctx, time.Duration(attempt)*time.Second); waitErr != nil {
+				return waitErr
+			}
 			continue
 		}
 
 		if res.StatusCode == http.StatusTooManyRequests ||
 			res.StatusCode == http.StatusServiceUnavailable {
+			delay := time.Duration(1<<uint(attempt-1)) * time.Second
+			if retryAfter, parseErr := strconv.Atoi(res.Header.Get("Retry-After")); parseErr == nil && retryAfter > 0 {
+				delay = time.Duration(retryAfter) * time.Second
+			}
 			res.Body.Close()
 			lastErr = fmt.Errorf("GET %s -> HTTP %d", path, res.StatusCode)
-			time.Sleep(time.Duration(attempt) * time.Second)
+			c.pauseRequests(delay)
+			if err := wait(ctx, delay); err != nil {
+				return err
+			}
 			continue
 		}
 		if res.StatusCode != http.StatusOK {
@@ -46,6 +60,18 @@ func (c *Client) get(ctx context.Context, path string, out interface{}) error {
 	return fmt.Errorf("GET %s failed after %d attempts: %w", path, maxRetries, lastErr)
 }
 
+func wait(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // FetchUser returns the full profile for one login
 func (c *Client) FetchUser(ctx context.Context, login string) (*Profile, error) {
 	var p Profile
@@ -53,6 +79,45 @@ func (c *Client) FetchUser(ctx context.Context, login string) (*Profile, error) 
 		return nil, err
 	}
 	return &p, nil
+}
+
+type CampusUser struct {
+	Login  string `json:"login"`
+	Kind   string `json:"kind"`
+	Active bool   `json:"active?"`
+	Alumni bool   `json:"alumni?"`
+}
+
+// FetchCampusUserLogins returns active student logins attached to a campus.
+// The API endpoint is paginated at 100 items, so this keeps the number of
+// requests small even for a large campus.
+func (c *Client) FetchCampusUserLogins(ctx context.Context, campusID int) ([]string, error) {
+	const pageSize = 100
+	var logins []string
+
+	for page := 1; ; page++ {
+		var users []CampusUser
+		path := fmt.Sprintf("/v2/campus/%d/users?page[number]=%d&page[size]=%d", campusID, page, pageSize)
+		if err := c.get(ctx, path, &users); err != nil {
+			return nil, err
+		}
+
+		for _, user := range users {
+			if user.Login == "" || (user.Kind != "" && user.Kind != "student") {
+				continue
+			}
+			if !user.Active || user.Alumni {
+				continue
+			}
+			logins = append(logins, user.Login)
+		}
+
+		if len(users) < pageSize {
+			break
+		}
+	}
+
+	return logins, nil
 }
 
 // CountStars returns how many scale_teams are flagged "Outstanding project" (flag id 9)
@@ -70,6 +135,30 @@ func (c *Client) CountStars(ctx context.Context, teamID int) (int, error) {
 	return stars, nil
 }
 
+func (c *Client) CountStarsBatch(ctx context.Context, teamIDs []int) (map[int]int, error) {
+	if len(teamIDs) == 0 {
+		return map[int]int{}, nil
+	}
+
+	var teams []Team
+	path := fmt.Sprintf("/v2/teams?filter[id]=%s&page[size]=100", joinIDs(teamIDs))
+	if err := c.get(ctx, path, &teams); err != nil {
+		return nil, err
+	}
+
+	starsByTeam := make(map[int]int, len(teams))
+	for _, team := range teams {
+		stars := 0
+		for _, scaleTeam := range team.ScaleTeams {
+			if scaleTeam.Flag.ID == 9 {
+				stars++
+			}
+		}
+		starsByTeam[team.ID] = stars
+	}
+	return starsByTeam, nil
+}
+
 // IsExam resolves the exam flag for a project id
 func (c *Client) IsExam(ctx context.Context, projectID int) (bool, error) {
 	var pd ProjectDetail
@@ -77,4 +166,30 @@ func (c *Client) IsExam(ctx context.Context, projectID int) (bool, error) {
 		return false, err
 	}
 	return pd.Exam, nil
+}
+
+func (c *Client) IsExamBatch(ctx context.Context, projectIDs []int) (map[int]bool, error) {
+	if len(projectIDs) == 0 {
+		return map[int]bool{}, nil
+	}
+
+	var projects []ProjectDetail
+	path := fmt.Sprintf("/v2/projects?filter[id]=%s&page[size]=100", joinIDs(projectIDs))
+	if err := c.get(ctx, path, &projects); err != nil {
+		return nil, err
+	}
+
+	examByProject := make(map[int]bool, len(projects))
+	for _, project := range projects {
+		examByProject[project.ID] = project.Exam
+	}
+	return examByProject, nil
+}
+
+func joinIDs(ids []int) string {
+	values := make([]string, len(ids))
+	for i, id := range ids {
+		values[i] = strconv.Itoa(id)
+	}
+	return strings.Join(values, ",")
 }
