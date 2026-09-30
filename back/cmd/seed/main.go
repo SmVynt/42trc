@@ -17,6 +17,7 @@ var logins = []string{"nmikuka", "psmolin", "vpushkar", "omizin", "icorrale"}
 func main() {
 	// --stars enables the slow star/exam pass (many extra API calls)
 	withStars := flag.Bool("stars", false, "also fetch stars and exam flag per project")
+	testUsers := flag.Bool("test-users", false, "seed only the five test users")
 	flag.Parse()
 
 	if err := godotenv.Load("../.env"); err != nil && !os.IsNotExist(err) {
@@ -31,6 +32,15 @@ func main() {
 	client, err := api42.NewClient(ctx)
 	if err != nil {
 		log.Fatal("failed to create 42 client: ", err)
+	}
+
+	if *testUsers {
+		log.Println("test mode: seeding five test users")
+		if err := client.SeedLogins(ctx, database.DB, logins, *withStars); err != nil {
+			log.Fatal("seed failed: ", err)
+		}
+		log.Println("Done.")
+		return
 	}
 
 	if campusID := seedCampusID(); campusID > 0 {
