@@ -34,7 +34,7 @@ help:
 	@printf '%s\n' "  make check            Run tests, lint, build, and Compose validation"
 	@printf '%s\n' "  make backend-build    Build the backend binary"
 	@printf '%s\n' "  make game-build       Build the game-server binary"
-	@printf '%s\n' "  make seed-stars       Seed stars; use CAMPUS_ID=39 for 42 Heilbronn"
+	@printf '%s\n' "  make seed-stars       Seed stars; TEST_USERS=1 uses five test accounts"
 	@printf '%s\n' "  make docker-build     Build all production images"
 	@printf '%s\n' "  make docker-up        Start the production Compose stack"
 	@printf '%s\n' "  make docker-down      Stop the Compose stack"
@@ -150,7 +150,7 @@ ps: check-env
 
 seed: check-env
 	@printf '%b\n' "$(YELLOW)Seeding database from 42 API...$(RESET)"
-	@$(COMPOSE) --profile tools run --rm seed sh -c 'if [ -n "$(CAMPUS_ID)" ]; then export SEED_CAMPUS_ID="$(CAMPUS_ID)"; fi; if [ -n "$(API_CONCURRENCY)" ]; then export SEED_API_CONCURRENCY="$(API_CONCURRENCY)"; fi; if [ -n "$(API_RATE)" ]; then export SEED_API_RATE="$(API_RATE)"; fi; exec go run ./cmd/seed $(STARS)'
+	@$(COMPOSE) --profile tools run --rm seed sh -c 'if [ -n "$(CAMPUS_ID)" ]; then export SEED_CAMPUS_ID="$(CAMPUS_ID)"; fi; if [ -n "$(API_CONCURRENCY)" ]; then export SEED_API_CONCURRENCY="$(API_CONCURRENCY)"; fi; if [ -n "$(API_RATE)" ]; then export SEED_API_RATE="$(API_RATE)"; fi; if [ "$(TEST_USERS)" = "1" ]; then TEST_FLAG=--test-users; fi; exec go run ./cmd/seed $(STARS) $$TEST_FLAG'
 	@printf '%b\n' "$(GREEN)Seed complete.$(RESET)"
 
 seed-stars:
