@@ -150,7 +150,7 @@ ps: check-env
 
 seed: check-env
 	@printf '%b\n' "$(YELLOW)Seeding database from 42 API...$(RESET)"
-	@$(COMPOSE) --profile tools run --rm seed sh -c 'if [ -n "$(CAMPUS_ID)" ]; then export SEED_CAMPUS_ID="$(CAMPUS_ID)"; fi; if [ -n "$(API_CONCURRENCY)" ]; then export SEED_API_CONCURRENCY="$(API_CONCURRENCY)"; fi; if [ -n "$(API_RATE)" ]; then export SEED_API_RATE="$(API_RATE)"; fi; if [ "$(TEST_USERS)" = "1" ]; then TEST_FLAG=--test-users; fi; exec go run ./cmd/seed $(STARS) $$TEST_FLAG'
+	@$(COMPOSE) --profile tools run --rm seed sh -c 'if [ -n "$(API_CONCURRENCY)" ]; then export SEED_API_CONCURRENCY="$(API_CONCURRENCY)"; fi; if [ -n "$(API_RATE)" ]; then export SEED_API_RATE="$(API_RATE)"; fi; if [ "$(TEST_USERS)" = "1" ]; then TEST_FLAG=--test-users; fi; exec go run ./cmd/seed $(STARS) $$TEST_FLAG'
 	@printf '%b\n' "$(GREEN)Seed complete.$(RESET)"
 
 seed-stars:

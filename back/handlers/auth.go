@@ -3,10 +3,12 @@ package handlers
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/SmVynt/42trc/back/internal/api42"
 	"github.com/SmVynt/42trc/back/internal/auth"
 	"github.com/SmVynt/42trc/back/models"
+	"github.com/SmVynt/42trc/back/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -42,7 +44,7 @@ func userResponse(u models.User) gin.H {
 }
 
 // Handle42Callback exchanges the OAuth code, upserts the user, returns a session JWT
-func Handle42Callback(db *gorm.DB) gin.HandlerFunc {
+func Handle42Callback(db *gorm.DB, syncer *services.ProfileSyncer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body callbackBody
 		if err := c.ShouldBindJSON(&body); err != nil || body.Code == "" {
@@ -83,6 +85,10 @@ func Handle42Callback(db *gorm.DB) gin.HandlerFunc {
 			Email:    email,
 			Intra:    intra,
 		}
+		now := time.Now()
+		user.EmailVerifiedAt = &now
+		user.LastLoginAt = &now
+		user.APISyncStatus = "pending"
 		// Upsert by email, refresh login timestamps
 		if err := db.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "email"}},
@@ -90,10 +96,24 @@ func Handle42Callback(db *gorm.DB) gin.HandlerFunc {
 				"intra":             intra,
 				"email_verified_at": gorm.Expr("now()"),
 				"last_login_at":     gorm.Expr("now()"),
+				"api_sync_status":   "pending",
+				"api_sync_error":    "",
 				"updated_at":        gorm.Expr("now()"),
 			}),
 		}).Create(&user).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save user."})
+			return
+		}
+		// Keep the login marker separate from the profile sync upsert. This is
+		// the source of truth for showing the user immediately in the levels list.
+		if err := db.Model(&models.User{}).Where("email = ?", email).Updates(map[string]interface{}{
+			"email_verified_at": now,
+			"last_login_at":     now,
+			"api_sync_status":   "pending",
+			"api_sync_error":    "",
+			"updated_at":        now,
+		}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to record login."})
 			return
 		}
 
@@ -108,6 +128,9 @@ func Handle42Callback(db *gorm.DB) gin.HandlerFunc {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to issue session token."})
 			return
+		}
+		if syncer != nil {
+			syncer.Enqueue(intra)
 		}
 
 		c.JSON(http.StatusOK, gin.H{

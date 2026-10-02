@@ -2,9 +2,11 @@ package api42
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/SmVynt/42trc/back/models"
 	"gorm.io/gorm"
@@ -16,10 +18,14 @@ import (
 func (c *Client) SeedLogins(ctx context.Context, db *gorm.DB, logins []string, withStars bool) error {
 	profiles := c.fetchProfiles(ctx, logins)
 	log.Printf("profiles fetched: %d/%d", len(profiles), len(logins))
+	if len(profiles) != len(logins) {
+		return fmt.Errorf("only %d of %d profiles were fetched", len(profiles), len(logins))
+	}
 	starsByTeam := make(map[int]int)
 	examByProject := make(map[int]bool)
+	var metadataErr error
 	if withStars {
-		starsByTeam, examByProject = c.fetchProjectMetadata(ctx, profiles)
+		starsByTeam, examByProject, metadataErr = c.fetchProjectMetadata(ctx, db, profiles)
 	}
 
 	for _, profile := range profiles {
@@ -51,7 +57,7 @@ func (c *Client) SeedLogins(ctx context.Context, db *gorm.DB, logins []string, w
 		log.Printf("[%s] done: %d cursus, %d projects",
 			login, len(profile.CursusUsers), len(profile.ProjectsUsers))
 	}
-	return nil
+	return metadataErr
 }
 
 func (c *Client) workerCount() int {
@@ -137,7 +143,7 @@ type metadataBatchResult struct {
 	err         error
 }
 
-func (c *Client) fetchProjectMetadata(ctx context.Context, profiles []*Profile) (map[int]int, map[int]bool) {
+func (c *Client) fetchProjectMetadata(ctx context.Context, db *gorm.DB, profiles []*Profile) (map[int]int, map[int]bool, error) {
 	const teamBatchSize = 50
 	const projectBatchSize = 100
 
@@ -156,19 +162,24 @@ func (c *Client) fetchProjectMetadata(ctx context.Context, profiles []*Profile) 
 
 	teamIDList := sortedIDs(teamIDs)
 	projectIDList := sortedIDs(projectIDs)
+
+	// Team stars change during the day, so keep them for one hour. Project
+	// exam flags are effectively static and can be cached longer.
+	starsByTeam, staleTeams := loadTeamMetadata(db, teamIDList, time.Hour)
+	examByProject, staleProjects := loadProjectMetadata(db, projectIDList, 24*time.Hour)
+
 	batches := make([]metadataBatch, 0)
-	for _, ids := range chunkIDs(teamIDList, teamBatchSize) {
+	for _, ids := range chunkIDs(staleTeams, teamBatchSize) {
 		batches = append(batches, metadataBatch{kind: "team", ids: ids})
 	}
-	for _, ids := range chunkIDs(projectIDList, projectBatchSize) {
+	for _, ids := range chunkIDs(staleProjects, projectBatchSize) {
 		batches = append(batches, metadataBatch{kind: "project", ids: ids})
 	}
-	log.Printf("metadata: %d unique teams in %d batches, %d unique projects in %d batches",
-		len(teamIDList), (len(teamIDList)+teamBatchSize-1)/teamBatchSize,
-		len(projectIDList), (len(projectIDList)+projectBatchSize-1)/projectBatchSize)
+	log.Printf("metadata: %d teams (%d stale), %d projects (%d stale)",
+		len(teamIDList), len(staleTeams), len(projectIDList), len(staleProjects))
 
 	if len(batches) == 0 {
-		return map[int]int{}, map[int]bool{}
+		return starsByTeam, examByProject, nil
 	}
 
 	jobs := make(chan metadataBatch)
@@ -203,12 +214,12 @@ func (c *Client) fetchProjectMetadata(ctx context.Context, profiles []*Profile) 
 		close(results)
 	}()
 
-	starsByTeam := make(map[int]int, len(teamIDs))
-	examByProject := make(map[int]bool, len(projectIDs))
 	completed := 0
+	failed := 0
 	for result := range results {
 		completed++
 		if result.err != nil {
+			failed++
 			log.Printf("metadata %s batch failed: %v", result.kind, result.err)
 			continue
 		}
@@ -216,14 +227,105 @@ func (c *Client) fetchProjectMetadata(ctx context.Context, profiles []*Profile) 
 			for id, stars := range result.starsByTeam {
 				starsByTeam[id] = stars
 			}
+			if err := saveTeamMetadata(db, result.starsByTeam); err != nil {
+				log.Printf("team metadata cache save failed: %v", err)
+			}
 		} else {
 			for id, exam := range result.examByID {
 				examByProject[id] = exam
 			}
+			if err := saveProjectMetadata(db, result.examByID); err != nil {
+				log.Printf("project metadata cache save failed: %v", err)
+			}
 		}
 		log.Printf("metadata progress: %d/%d batches", completed, len(batches))
 	}
-	return starsByTeam, examByProject
+	if failed > 0 {
+		return starsByTeam, examByProject, fmt.Errorf("%d of %d metadata batches failed", failed, len(batches))
+	}
+	return starsByTeam, examByProject, nil
+}
+
+func loadTeamMetadata(db *gorm.DB, ids []int, ttl time.Duration) (map[int]int, []int) {
+	values := make(map[int]int, len(ids))
+	if len(ids) == 0 {
+		return values, nil
+	}
+	var rows []models.TeamMetadata
+	if err := db.Where("team_id IN ?", ids).Find(&rows).Error; err != nil {
+		log.Printf("team metadata cache read failed: %v", err)
+	}
+	cutoff := time.Now().Add(-ttl)
+	fresh := make(map[int]bool, len(rows))
+	for _, row := range rows {
+		values[row.TeamID] = row.Stars
+		if !row.SyncedAt.Before(cutoff) {
+			fresh[row.TeamID] = true
+		}
+	}
+	stale := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if !fresh[id] {
+			stale = append(stale, id)
+		}
+	}
+	return values, stale
+}
+
+func loadProjectMetadata(db *gorm.DB, ids []int, ttl time.Duration) (map[int]bool, []int) {
+	values := make(map[int]bool, len(ids))
+	if len(ids) == 0 {
+		return values, nil
+	}
+	var rows []models.ProjectMetadata
+	if err := db.Where("project_id IN ?", ids).Find(&rows).Error; err != nil {
+		log.Printf("project metadata cache read failed: %v", err)
+	}
+	cutoff := time.Now().Add(-ttl)
+	fresh := make(map[int]bool, len(rows))
+	for _, row := range rows {
+		values[row.ProjectID] = row.IsExam
+		if !row.SyncedAt.Before(cutoff) {
+			fresh[row.ProjectID] = true
+		}
+	}
+	stale := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if !fresh[id] {
+			stale = append(stale, id)
+		}
+	}
+	return values, stale
+}
+
+func saveTeamMetadata(db *gorm.DB, values map[int]int) error {
+	if len(values) == 0 {
+		return nil
+	}
+	now := time.Now()
+	rows := make([]models.TeamMetadata, 0, len(values))
+	for id, stars := range values {
+		rows = append(rows, models.TeamMetadata{TeamID: id, Stars: stars, SyncedAt: now})
+	}
+	return db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "team_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"stars", "synced_at"}),
+	}).CreateInBatches(&rows, 100).Error
+}
+
+func saveProjectMetadata(db *gorm.DB, values map[int]bool) error {
+	if len(values) == 0 {
+		return nil
+	}
+	now := time.Now()
+	rows := make([]models.ProjectMetadata, 0, len(values))
+	for id, isExam := range values {
+		rows = append(rows, models.ProjectMetadata{ProjectID: id, IsExam: isExam, SyncedAt: now})
+	}
+	return db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "project_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"is_exam", "synced_at"}),
+	}).CreateInBatches(&rows, 100).Error
 }
 
 func sortedIDs(values map[int]struct{}) []int {

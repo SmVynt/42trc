@@ -38,6 +38,7 @@ func GetLevels(db *gorm.DB) gin.HandlerFunc {
 				ON c.user_id = u.id AND c.cursus_id = ?
 			LEFT JOIN user_projects p
 				ON p.user_id = u.id
+			WHERE u.last_login_at IS NOT NULL
 			GROUP BY u.id, u.username, u.displayname, c.level
 			ORDER BY c.level DESC NULLS LAST, u.username ASC
 			`, coreCursusID, coreCursusID, coreCursusID, coreCursusID).Scan(&rows).Error
