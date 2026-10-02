@@ -81,45 +81,6 @@ func (c *Client) FetchUser(ctx context.Context, login string) (*Profile, error) 
 	return &p, nil
 }
 
-type CampusUser struct {
-	Login  string `json:"login"`
-	Kind   string `json:"kind"`
-	Active bool   `json:"active?"`
-	Alumni bool   `json:"alumni?"`
-}
-
-// FetchCampusUserLogins returns active student logins attached to a campus.
-// The API endpoint is paginated at 100 items, so this keeps the number of
-// requests small even for a large campus.
-func (c *Client) FetchCampusUserLogins(ctx context.Context, campusID int) ([]string, error) {
-	const pageSize = 100
-	var logins []string
-
-	for page := 1; ; page++ {
-		var users []CampusUser
-		path := fmt.Sprintf("/v2/campus/%d/users?page[number]=%d&page[size]=%d", campusID, page, pageSize)
-		if err := c.get(ctx, path, &users); err != nil {
-			return nil, err
-		}
-
-		for _, user := range users {
-			if user.Login == "" || (user.Kind != "" && user.Kind != "student") {
-				continue
-			}
-			if !user.Active || user.Alumni {
-				continue
-			}
-			logins = append(logins, user.Login)
-		}
-
-		if len(users) < pageSize {
-			break
-		}
-	}
-
-	return logins, nil
-}
-
 // CountStars returns how many scale_teams are flagged "Outstanding project" (flag id 9)
 func (c *Client) CountStars(ctx context.Context, teamID int) (int, error) {
 	var team Team

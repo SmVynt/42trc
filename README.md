@@ -42,6 +42,24 @@ make dev
 ```
 Once started, the site will be available at [http://localhost:5173](http://localhost:5173).
 
+### 3. 42 profile synchronization
+
+The backend synchronizes only users who have logged in through 42 OAuth. After
+the first login it loads the full profile, core cursus projects, levels, stars,
+and exam flags in the background. Logged-in users are refreshed every hour;
+team stars are cached in PostgreSQL for one hour and project exam metadata for
+24 hours.
+
+For local tests, seed only the five test accounts:
+
+```bash
+make seed TEST_USERS=1
+make seed-stars TEST_USERS=1
+```
+
+The normal seed commands do not import an entire campus and do not delete old
+users.
+
 ---
 
 ## Database Backup & Transfer
@@ -75,5 +93,4 @@ A web-based database management tool (Adminer) is included in the development st
    - **Username:** `postgres` *(matching your `DB_USER`)*
    - **Password:** `postgres` *(matching your `DB_PASSWORD`)*
    - **Database:** `42trc_game` *(matching your `DB_NAME`)*
-
 
