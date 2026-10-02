@@ -8,7 +8,7 @@ import (
 type User struct {
 	ID              uint   `gorm:"primaryKey"`
 	Username        string `gorm:"type:varchar(255);not null;uniqueIndex"`
-	Intra           string `gorm:"type:varchar(255)"`
+	Intra           string `gorm:"type:varchar(255);index"`
 	IntraID         *int   `gorm:"uniqueIndex"`
 	Email           string `gorm:"type:varchar(255);uniqueIndex"`
 	Displayname     string `gorm:"type:varchar(255)"`
@@ -17,7 +17,10 @@ type User struct {
 	CorrectionPoint int    `gorm:"default:0"`
 	PasswordHash    string `gorm:"type:varchar(255)"`
 	EmailVerifiedAt *time.Time
-	LastLoginAt     *time.Time
+	LastLoginAt     *time.Time `gorm:"index"`
+	LastAPISyncAt   *time.Time `gorm:"index"`
+	APISyncStatus   string     `gorm:"type:varchar(20);not null;default:'pending'"`
+	APISyncError    string     `gorm:"type:text"`
 	EquippedHat     string     `gorm:"type:varchar(255);default:''"`
 	EquippedGlasses string     `gorm:"type:varchar(255);default:''"`
 	EquippedFace    string     `gorm:"type:varchar(255);default:''"`

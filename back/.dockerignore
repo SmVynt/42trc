@@ -1,7 +1,6 @@
 .git
 .env
 Dockerfile
-game-server
 *.log
 coverage/
 tmp/

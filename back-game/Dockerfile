@@ -1,33 +1,26 @@
-# Build stage
-FROM golang:1.21-alpine AS builder
+# syntax=docker/dockerfile:1.7
 
-WORKDIR /app
+FROM golang:1.21-alpine AS build
 
-# Copy go mod files
+WORKDIR /src
+
 COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-# Download dependencies
-RUN go mod download
-
-# Copy source code
 COPY . .
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /game-server .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o game-server .
+FROM alpine:3.20
 
-# Runtime stage
-FROM alpine:latest
-
-# Install ca-certificates for HTTPS
-RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache ca-certificates \
+    && addgroup -S app \
+    && adduser -S -G app app
 
 WORKDIR /app
+COPY --from=build --chown=app:app /game-server /app/game-server
 
-# Copy the binary from builder
-COPY --from=builder /app/game-server .
-
-# Expose port
+USER app
 EXPOSE 5001
-
-# Run the application
-CMD ["./game-server"]
+ENTRYPOINT ["/app/game-server"]
