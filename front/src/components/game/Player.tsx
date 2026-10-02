@@ -103,7 +103,7 @@ const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => 
   )
 }
 
-const Player = ({ user }: { user: any }) => {
+const Player = ({ user, isPaused = false }: { user: any; isPaused?: boolean }) => {
   const keysPressed = useRef<Record<string, boolean>>({})
   const lastMovementSendTime = useRef<number>(0)
   const movementUpdateInterval = 50 // ms (20 updates per second)
@@ -148,6 +148,10 @@ const Player = ({ user }: { user: any }) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const code = e.code
 
+      if (isPaused) {
+        return
+      }
+
       // Prevent default for game keys
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'KeyC'].includes(code)) {
         e.preventDefault()
@@ -179,7 +183,13 @@ const Player = ({ user }: { user: any }) => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [isPaused])
+
+  useEffect(() => {
+    if (isPaused) {
+      keysPressed.current = {}
+    }
+  }, [isPaused])
 
   const joinedRef = useRef(false)
   const { addPlayer, updatePlayerPosition, setPlayersInRoom, removePlayer, cleanupInactivePlayers } = usePlayers()
@@ -259,7 +269,7 @@ const Player = ({ user }: { user: any }) => {
 
   // Game loop - send updates to server
   useFrame((state, delta) => {
-    if (controlsRef.current) {
+    if (!isPaused && controlsRef.current) {
       controlsRef.current.update(delta, keysPressed.current)
 
       // Send movement/heartbeat 20 times per second (every 50ms)
@@ -288,4 +298,3 @@ const Player = ({ user }: { user: any }) => {
 }
 
 export default Player
-
