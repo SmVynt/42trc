@@ -9,7 +9,7 @@ import World from './Environment'
 import { useAuth } from '../../hooks/useAuth'
 
 
-const Game = () => {
+const Game = ({ isStoreOpen = false }: { isStoreOpen?: boolean }) => {
   const { user } = useAuth()
 
   return (
@@ -22,7 +22,7 @@ const Game = () => {
         {/* <Lighting /> */}
         {/* <Physics debug> */}
         <Physics>
-          <Player user={user} />
+          <Player user={user} isPaused={isStoreOpen} />
           <World />
         </Physics>
         <OtherPlayers />
