@@ -38,7 +38,8 @@ func currentUserFromRequest(db *gorm.DB, c *gin.Context) (*models.User, bool) {
 	}
 
 	var user models.User
-	if err := db.Where("email = ?", claims.Email).First(&user).Error; err != nil {
+	email := strings.ToLower(strings.TrimSpace(claims.Email))
+	if err := db.Where("LOWER(TRIM(email)) = ?", email).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"message": "User not found."})
 		return nil, false
 	}

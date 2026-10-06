@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import Game from '../components/game/Game'
+import InventoryOverlay from '../components/game/InventoryOverlay'
 import StoreOverlay from '../components/game/StoreOverlay'
 import { PlayersProvider } from '../context/players.context'
 import { useAuth } from '../hooks/useAuth'
 
 const GamePage = () => {
   const { user, loading } = useAuth()
-  const [isStoreOpen, setIsStoreOpen] = useState(false)
+  const [activeOverlay, setActiveOverlay] = useState<'store' | 'inventory' | null>(null)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code === 'KeyB' && !event.repeat) {
         event.preventDefault()
-        setIsStoreOpen((open) => !open)
+        setActiveOverlay((overlay) => overlay === 'store' ? null : 'store')
+      }
+
+      if (event.code === 'KeyI' && !event.repeat) {
+        event.preventDefault()
+        setActiveOverlay((overlay) => overlay === 'inventory' ? null : 'inventory')
       }
 
       if (event.code === 'Escape') {
-        setIsStoreOpen(false)
+        setActiveOverlay(null)
       }
     }
 
@@ -26,12 +32,12 @@ const GamePage = () => {
   }, [])
 
   useEffect(() => {
-    document.body.style.overflow = isStoreOpen ? 'hidden' : ''
+    document.body.style.overflow = activeOverlay ? 'hidden' : ''
 
     return () => {
       document.body.style.overflow = ''
     }
-  }, [isStoreOpen])
+  }, [activeOverlay])
 
   if (loading) {
     return <main style={{ padding: 24, color: '#f8fafc' }}>Loading game session...</main>
@@ -45,8 +51,8 @@ const GamePage = () => {
     <PlayersProvider>
       <main>
         <section style={{ position: 'relative', width: '100%', height: '100vh', display: 'grid', placeItems: 'center' }}>
-          <Game isStoreOpen={isStoreOpen} />
-          {!isStoreOpen && (
+          <Game isOverlayOpen={activeOverlay !== null} />
+          {!activeOverlay && (
             <div
               aria-keyshortcuts='B'
               style={{
@@ -63,10 +69,11 @@ const GamePage = () => {
                 pointerEvents: 'none',
               }}
             >
-              Press <strong style={{ color: '#fbbf24' }}>B</strong> to open Store
+              Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory
             </div>
           )}
-          {isStoreOpen && <StoreOverlay onClose={() => setIsStoreOpen(false)} />}
+          {activeOverlay === 'store' && <StoreOverlay onClose={() => setActiveOverlay(null)} />}
+          {activeOverlay === 'inventory' && <InventoryOverlay onClose={() => setActiveOverlay(null)} />}
         </section>
       </main>
     </PlayersProvider>

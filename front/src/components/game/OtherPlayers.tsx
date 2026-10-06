@@ -86,11 +86,11 @@ function OtherPlayerModel({ player }: { player: any }) {
   const accessories = useMemo(
     () =>
       cloneAccessories([
-        { kind: 'hat', scene: hatScene },
-        { kind: 'glasses', scene: glassesScene },
-        { kind: 'face', scene: faceScene },
+        { kind: 'hat', scene: hatScene, enabled: Boolean(clothing.hat) },
+        { kind: 'glasses', scene: glassesScene, enabled: Boolean(clothing.glasses) },
+        { kind: 'face', scene: faceScene, enabled: true },
       ]),
-    [faceScene, glassesScene, hatScene]
+    [faceScene, glassesScene, hatScene, clothing.face, clothing.glasses, clothing.hat]
   )
 
   useEffect(() => {

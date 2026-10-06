@@ -71,11 +71,11 @@ const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => 
   const accessories = useMemo(
     () =>
       cloneAccessories([
-        { kind: 'hat', scene: hatScene },
-        { kind: 'glasses', scene: glassesScene },
-        { kind: 'face', scene: faceScene },
+        { kind: 'hat', scene: hatScene, enabled: Boolean(user?.equippedHat) },
+        { kind: 'glasses', scene: glassesScene, enabled: Boolean(user?.equippedGlasses) },
+        { kind: 'face', scene: faceScene, enabled: true },
       ]),
-    [faceScene, glassesScene, hatScene]
+    [faceScene, glassesScene, hatScene, user?.equippedFace, user?.equippedGlasses, user?.equippedHat]
   )
 
   useEffect(() => {
