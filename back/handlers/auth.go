@@ -257,7 +257,7 @@ type buyItemBody struct {
 	Price    int    `json:"price"`
 }
 
-// BuyItem buys an item, updates the user's wallet, and equips it
+// BuyItem buys an item and updates the user's wallet. Equipment is managed by EquipItem.
 func BuyItem(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -313,15 +313,6 @@ func BuyItem(db *gorm.DB) gin.HandlerFunc {
 			} else {
 				user.OwnedItems = user.OwnedItems + "," + body.ItemID
 			}
-		}
-
-		switch strings.ToLower(body.Category) {
-		case "hats":
-			user.EquippedHat = body.ItemID
-		case "glasses":
-			user.EquippedGlasses = body.ItemID
-		case "masks", "face":
-			user.EquippedFace = body.ItemID
 		}
 
 		if err := db.Save(&user).Error; err != nil {

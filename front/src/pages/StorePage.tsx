@@ -139,11 +139,11 @@ function AvatarPreview({ item }) {
 	// Clone and prepare accessories
 	const accessories = useMemo(() => {
 		return cloneAccessories([
-			{ kind: 'hat', scene: hatScene },
-			{ kind: 'glasses', scene: glassesScene },
-			{ kind: 'face', scene: faceScene },
+			{ kind: 'hat', scene: hatScene, enabled: Boolean(currentHatId) },
+			{ kind: 'glasses', scene: glassesScene, enabled: Boolean(currentGlassesId) },
+			{ kind: 'face', scene: faceScene, enabled: true },
 		])
-	}, [hatScene, glassesScene, faceScene])
+	}, [hatScene, glassesScene, faceScene, currentHatId, currentGlassesId, currentFaceId])
 
 	// Attach accessories to bones and convert everything to unlit
 	useEffect(() => {
@@ -295,13 +295,6 @@ const StorePage = ({ embedded = false, onClose }: StorePageProps = {}) => {
 			user.equippedFace === selectedItem.id
 	}, [user, selectedItem])
 
-	const isSelectedEquipped = useMemo(() => {
-		if (!user) return false
-		return user.equippedHat === selectedItem.id ||
-			user.equippedGlasses === selectedItem.id ||
-			user.equippedFace === selectedItem.id
-	}, [user, selectedItem])
-
 	const handleBuy = async () => {
 		if (!user) {
 			setPurchaseStatus('You must be logged in to make a purchase.')
@@ -320,7 +313,7 @@ const StorePage = ({ embedded = false, onClose }: StorePageProps = {}) => {
 		try {
 			const res = await authService.buyItem(token, selectedItem.id, selectedItem.category, selectedItem.price)
 			updateUser(res.user)
-			setPurchaseStatus('Purchase successful and equipped!')
+			setPurchaseStatus('Purchase successful. Equip it from Inventory.')
 		} catch (err: any) {
 			setPurchaseStatus(err?.message || 'Failed to complete purchase.')
 		} finally {
@@ -336,6 +329,8 @@ const StorePage = ({ embedded = false, onClose }: StorePageProps = {}) => {
 			return groups
 		}, {})
 	}, [])
+
+	const purchaseDisabled = buying || !user || isSelectedOwned || user.wallet! < selectedItem.price
 
 	return (
 		<main
@@ -515,21 +510,21 @@ const StorePage = ({ embedded = false, onClose }: StorePageProps = {}) => {
 							<button
 								type='button'
 								onClick={handleBuy}
-								disabled={buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price)}
+								disabled={purchaseDisabled}
 								style={{
 									padding: '10px 16px',
 									borderRadius: 14,
-									border: (buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price))
+									border: purchaseDisabled
 										? '2px solid #cbd5e1'
 										: isSelectedOwned
 											? '2px solid #059669'
 											: '2px solid #46342b',
-									background: (buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price))
+									background: purchaseDisabled
 										? '#e2e8f0'
 										: isSelectedOwned
 											? '#f0fdf4'
 											: '#f7efe4',
-									color: (buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price))
+									color: purchaseDisabled
 										? '#94a3b8'
 										: isSelectedOwned
 											? '#065f46'
@@ -538,18 +533,16 @@ const StorePage = ({ embedded = false, onClose }: StorePageProps = {}) => {
 									letterSpacing: '0.08em',
 									textTransform: 'uppercase',
 									boxShadow: '0 10px 24px rgba(52, 36, 26, 0.15)',
-									cursor: (buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price))
+									cursor: purchaseDisabled
 										? 'not-allowed'
 										: 'pointer',
 								}}
 							>
 								{buying
 									? 'Buying...'
-									: isSelectedEquipped
-										? 'Equipped'
-										: isSelectedOwned
-											? 'Equip'
-											: 'Buy & Equip'}
+									: isSelectedOwned
+										? 'Owned'
+										: 'Buy'}
 							</button>
 						</div>
 					</div>
