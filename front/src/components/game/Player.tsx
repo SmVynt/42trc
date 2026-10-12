@@ -12,6 +12,7 @@ import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
 import { GameConfig } from './utils/gameConfig'
 import { convertToUnlit } from './utils/unlitMaterial'
 import { fishingActive, inventoryActive } from './fishing/FishingState'
+import { SLOT_MACHINE_INTERACTION_RADIUS, SLOT_MACHINE_POSITION } from './SlotMachine3D'
 
 interface PlayerModelProps {
   user: any
@@ -104,7 +105,7 @@ const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => 
   )
 }
 
-const Player = ({ user, isPaused = false }: { user: any; isPaused?: boolean }) => {
+const Player = ({ user, isPaused = false, onSlotNearby }: { user: any; isPaused?: boolean; onSlotNearby?: (nearby: boolean) => void }) => {
   const keysPressed = useRef<Record<string, boolean>>({})
   const lastMovementSendTime = useRef<number>(0)
   const movementUpdateInterval = 50 // ms (20 updates per second)
@@ -112,6 +113,7 @@ const Player = ({ user, isPaused = false }: { user: any; isPaused?: boolean }) =
   const { world } = useRapier()
 
   const controllerRef = useRef<any>(null)
+  const wasNearSlot = useRef(false)
 
   // Create the KinematicCharacterController after mount (WASM must be ready)
   useEffect(() => {
@@ -288,6 +290,17 @@ const Player = ({ user, isPaused = false }: { user: any; isPaused?: boolean }) =
           { y: controlsRef.current.currentRotationY },
           controlsRef.current.getState()
         )
+      }
+    }
+
+    if (controlsRef.current && onSlotNearby) {
+      const position = controlsRef.current.getPosition()
+      const dx = position.x - SLOT_MACHINE_POSITION[0]
+      const dz = position.z - SLOT_MACHINE_POSITION[2]
+      const nearby = Math.hypot(dx, dz) <= SLOT_MACHINE_INTERACTION_RADIUS
+      if (nearby !== wasNearSlot.current) {
+        wasNearSlot.current = nearby
+        onSlotNearby(nearby)
       }
     }
   })

@@ -12,8 +12,12 @@ import (
 )
 
 type coinFlipRequest struct {
-	BetAmount int  `json:"betAmount"`
+	BetAmount int    `json:"betAmount"`
 	Guess     string `json:"guess"`
+}
+
+type slotMachineRequest struct {
+	BetAmount int `json:"betAmount"`
 }
 
 func HandleCoinFlip(db *gorm.DB) gin.HandlerFunc {
@@ -79,4 +83,62 @@ func HandleCoinFlip(db *gorm.DB) gin.HandlerFunc {
 			"wallet":    user.Wallet,
 		})
 	}
+}
+
+func HandleSlotMachine(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := bearerToken(c)
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Missing auth token."})
+			return
+		}
+		claims, err := auth.ParseSessionToken(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid or expired token."})
+			return
+		}
+
+		var body slotMachineRequest
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request body."})
+			return
+		}
+		if body.BetAmount <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Bet amount must be greater than zero."})
+			return
+		}
+
+		var user models.User
+		if err := db.Where("email = ?", claims.Email).First(&user).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": "User not found."})
+			return
+		}
+
+		_, outcome, err := services.NewGamblingService(db).PlaySlotMachine(user.ID, body.BetAmount)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
+		if err := db.First(&user, user.ID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to refresh user wallet."})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":    "Slot spin completed.",
+			"symbols":    outcome.Symbols,
+			"winAmount":  outcome.WinAmount,
+			"multiplier": outcome.Multiplier,
+			"wallet":     user.Wallet,
+			"result":     outcome.Message,
+		})
+	}
+}
+
+func bearerToken(c *gin.Context) string {
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimPrefix(authHeader, "Bearer ")
+	}
+	return c.Query("token")
 }

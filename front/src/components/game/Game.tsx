@@ -10,7 +10,7 @@ import { useAuth } from '../../hooks/useAuth'
 import FishingOverlay from './fishing/FishingOverlay'
 import InventoryOverlay from './InventoryOverlay'
 
-const Game = ({ isOverlayOpen = false }: { isOverlayOpen?: boolean }) => {
+const Game = ({ isOverlayOpen = false, onSlotNearby }: { isOverlayOpen?: boolean; onSlotNearby?: (nearby: boolean) => void }) => {
   const { user } = useAuth()
   const [fishingOpen, setFishingOpen] = useState(false)
   const [inventoryOpen, setInventoryOpen] = useState(false)
@@ -40,7 +40,7 @@ const Game = ({ isOverlayOpen = false }: { isOverlayOpen?: boolean }) => {
         {/* <Lighting /> */}
         {/* <Physics debug> */}
         <Physics>
-          <Player user={user} isPaused={isOverlayOpen} />
+          <Player user={user} isPaused={isOverlayOpen} onSlotNearby={onSlotNearby} />
           <World />
         </Physics>
         <OtherPlayers />

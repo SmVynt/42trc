@@ -7,3 +7,12 @@ export type CoinFlipResponse = {
   betAmount: number
   wallet: number
 }
+
+export type SlotMachineResponse = {
+  message: string
+  symbols: [string, string, string]
+  winAmount: number
+  multiplier: number
+  wallet: number
+  result: string
+}
