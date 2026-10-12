@@ -3,23 +3,32 @@ import { Navigate } from 'react-router-dom'
 import Game from '../components/game/Game'
 import InventoryOverlay from '../components/game/InventoryOverlay'
 import StoreOverlay from '../components/game/StoreOverlay'
+import SlotMachineOverlay from '../components/game/SlotMachineOverlay'
 import { PlayersProvider } from '../context/players.context'
 import { useAuth } from '../hooks/useAuth'
 
 const GamePage = () => {
   const { user, loading } = useAuth()
-  const [activeOverlay, setActiveOverlay] = useState<'store' | 'inventory' | null>(null)
+  const [activeOverlay, setActiveOverlay] = useState<'store' | 'inventory' | 'slot' | null>(null)
+  const [isSlotNearby, setIsSlotNearby] = useState(false)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code === 'KeyB' && !event.repeat) {
+        if (activeOverlay) return
         event.preventDefault()
         setActiveOverlay((overlay) => overlay === 'store' ? null : 'store')
       }
 
       if (event.code === 'KeyI' && !event.repeat) {
+        if (activeOverlay) return
         event.preventDefault()
         setActiveOverlay((overlay) => overlay === 'inventory' ? null : 'inventory')
+      }
+
+      if (event.code === 'KeyF' && !event.repeat && isSlotNearby && !activeOverlay) {
+        event.preventDefault()
+        setActiveOverlay('slot')
       }
 
       if (event.code === 'Escape') {
@@ -29,7 +38,7 @@ const GamePage = () => {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [activeOverlay, isSlotNearby])
 
   useEffect(() => {
     document.body.style.overflow = activeOverlay ? 'hidden' : ''
@@ -51,10 +60,9 @@ const GamePage = () => {
     <PlayersProvider>
       <main>
         <section style={{ position: 'relative', width: '100%', height: '100vh', display: 'grid', placeItems: 'center' }}>
-          <Game isOverlayOpen={activeOverlay !== null} />
+          <Game isOverlayOpen={activeOverlay !== null} onSlotNearby={setIsSlotNearby} />
           {!activeOverlay && (
             <div
-              aria-keyshortcuts='B'
               style={{
                 position: 'absolute',
                 left: 20,
@@ -67,13 +75,17 @@ const GamePage = () => {
                 color: '#e2e8f0',
                 fontSize: 13,
                 pointerEvents: 'none',
+                display: 'grid',
+                gap: 4,
               }}
             >
-              Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory
+              <div>Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory</div>
+              {isSlotNearby && <div>Press <strong style={{ color: '#fbbf24' }}>F</strong> to gamble</div>}
             </div>
           )}
           {activeOverlay === 'store' && <StoreOverlay onClose={() => setActiveOverlay(null)} />}
           {activeOverlay === 'inventory' && <InventoryOverlay onClose={() => setActiveOverlay(null)} />}
+          {activeOverlay === 'slot' && <SlotMachineOverlay onClose={() => setActiveOverlay(null)} />}
         </section>
       </main>
     </PlayersProvider>

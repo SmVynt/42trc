@@ -8,6 +8,7 @@ import TreePalmModel from '../../assets/models/envir/tree_palm.glb?url'
 import GrassModel from '../../assets/models/envir/m_grass.glb?url'
 import { SpawnFromJSON } from './utils/SpawnFromJSON'
 import { Water } from './utils/shaders/Water'
+import SlotMachine3D from './SlotMachine3D'
 
 const World = () => {
     const { scene } = useGLTF(ground)
@@ -45,6 +46,7 @@ const World = () => {
                 useWind={false}
             />
             <Water position={[0, 0.25, 0]} width={250} height={250} />
+            <SlotMachine3D />
         </>
     )
 }
