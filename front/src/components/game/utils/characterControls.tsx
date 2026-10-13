@@ -331,6 +331,10 @@ export class CharacterControls {
     this.updateCameraPosition()
   }
 
+  public rotateCameraBy(deltaX: number) {
+    this.cameraAngle -= deltaX * 0.005
+  }
+
   public getPosition(): THREE.Vector3 {
     if (this.model.parent) {
       const worldPos = new THREE.Vector3()

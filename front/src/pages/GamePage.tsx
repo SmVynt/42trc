@@ -79,6 +79,7 @@ const GamePage = () => {
                 gap: 4,
               }}
             >
+              <div><strong style={{ color: '#fbbf24' }}>Right-click + drag</strong> to rotate camera</div>
               <div>Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory</div>
               {isSlotNearby && <div>Press <strong style={{ color: '#fbbf24' }}>F</strong> to gamble</div>}
             </div>
