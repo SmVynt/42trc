@@ -6,11 +6,16 @@ import StoreOverlay from '../components/game/StoreOverlay'
 import SlotMachineOverlay from '../components/game/SlotMachineOverlay'
 import { PlayersProvider } from '../context/players.context'
 import { useAuth } from '../hooks/useAuth'
+import DebugMap from '../components/game/DebugMap'
+import type { PlayerPosition } from '../components/game/Player'
+import { GameConfig } from '../components/game/utils/gameConfig'
 
 const GamePage = () => {
   const { user, loading } = useAuth()
   const [activeOverlay, setActiveOverlay] = useState<'store' | 'inventory' | 'slot' | null>(null)
   const [isSlotNearby, setIsSlotNearby] = useState(false)
+  const [isDebugMapOpen, setIsDebugMapOpen] = useState(false)
+  const [playerPosition, setPlayerPosition] = useState<PlayerPosition>({ x: GameConfig.START_X, y: GameConfig.START_Y, z: GameConfig.START_Z })
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -31,8 +36,14 @@ const GamePage = () => {
         setActiveOverlay('slot')
       }
 
+      if (event.code === 'KeyM' && !event.repeat && !activeOverlay) {
+        event.preventDefault()
+        setIsDebugMapOpen((open) => !open)
+      }
+
       if (event.code === 'Escape') {
         setActiveOverlay(null)
+        setIsDebugMapOpen(false)
       }
     }
 
@@ -60,7 +71,7 @@ const GamePage = () => {
     <PlayersProvider>
       <main>
         <section style={{ position: 'relative', width: '100%', height: '100vh', display: 'grid', placeItems: 'center' }}>
-          <Game isOverlayOpen={activeOverlay !== null} onSlotNearby={setIsSlotNearby} />
+          <Game isOverlayOpen={activeOverlay !== null} onSlotNearby={setIsSlotNearby} onPositionChange={setPlayerPosition} />
           {!activeOverlay && (
             <div
               style={{
@@ -80,10 +91,11 @@ const GamePage = () => {
               }}
             >
               <div><strong style={{ color: '#fbbf24' }}>Right-click + drag</strong> to rotate camera</div>
-              <div>Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory</div>
+              <div>Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory · <strong style={{ color: '#fbbf24' }}>M</strong> Debug map</div>
               {isSlotNearby && <div>Press <strong style={{ color: '#fbbf24' }}>F</strong> to gamble</div>}
             </div>
           )}
+          {isDebugMapOpen && <DebugMap position={playerPosition} onClose={() => setIsDebugMapOpen(false)} />}
           {activeOverlay === 'store' && <StoreOverlay onClose={() => setActiveOverlay(null)} />}
           {activeOverlay === 'inventory' && <InventoryOverlay onClose={() => setActiveOverlay(null)} />}
           {activeOverlay === 'slot' && <SlotMachineOverlay onClose={() => setActiveOverlay(null)} />}

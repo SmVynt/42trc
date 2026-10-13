@@ -20,6 +20,12 @@ interface PlayerModelProps {
   controllerRef: React.MutableRefObject<any>
 }
 
+export interface PlayerPosition {
+  x: number
+  y: number
+  z: number
+}
+
 const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
   const rigidBodyRef = useRef<RapierRigidBody>(null)
@@ -105,7 +111,7 @@ const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => 
   )
 }
 
-const Player = ({ user, isPaused = false, onSlotNearby }: { user: any; isPaused?: boolean; onSlotNearby?: (nearby: boolean) => void }) => {
+const Player = ({ user, isPaused = false, onSlotNearby, onPositionChange }: { user: any; isPaused?: boolean; onSlotNearby?: (nearby: boolean) => void; onPositionChange?: (position: PlayerPosition) => void }) => {
   const keysPressed = useRef<Record<string, boolean>>({})
   const lastMovementSendTime = useRef<number>(0)
   const movementUpdateInterval = 50 // ms (20 updates per second)
@@ -116,6 +122,7 @@ const Player = ({ user, isPaused = false, onSlotNearby }: { user: any; isPaused?
 
   const controllerRef = useRef<any>(null)
   const wasNearSlot = useRef(false)
+  const lastPositionUpdateTime = useRef(0)
 
   // Create the KinematicCharacterController after mount (WASM must be ready)
   useEffect(() => {
@@ -336,6 +343,12 @@ const Player = ({ user, isPaused = false, onSlotNearby }: { user: any; isPaused?
         wasNearSlot.current = nearby
         onSlotNearby(nearby)
       }
+    }
+
+    if (controlsRef.current && onPositionChange && state.clock.elapsedTime - lastPositionUpdateTime.current >= 0.1) {
+      lastPositionUpdateTime.current = state.clock.elapsedTime
+      const position = controlsRef.current.getPosition()
+      onPositionChange({ x: position.x, y: position.y, z: position.z })
     }
   })
 
