@@ -1,10 +1,10 @@
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 
-export const SLOT_MACHINE_POSITION: [number, number, number] = [44, 0, 40]
+export const SLOT_MACHINE_POSITION: [number, number, number] = [30, 0.5, 35]
 export const SLOT_MACHINE_INTERACTION_RADIUS = 3
 
 const SlotMachine3D = () => (
-  <RigidBody type="fixed" colliders={false} position={SLOT_MACHINE_POSITION} rotation={[0, -Math.PI / 2, 0]}>
+  <RigidBody type="fixed" colliders={false} position={SLOT_MACHINE_POSITION} rotation={[0, Math.PI / 2, 0]}>
     <CuboidCollider args={[0.55, 0.95, 0.45]} position={[0, 0.95, 0]} />
     <group>
       {/* Cabinet */}
