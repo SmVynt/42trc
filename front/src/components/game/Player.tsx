@@ -111,6 +111,8 @@ const Player = ({ user, isPaused = false, onSlotNearby }: { user: any; isPaused?
   const movementUpdateInterval = 50 // ms (20 updates per second)
   const controlsRef = useRef<CharacterControls | null>(null)
   const { world } = useRapier()
+  const { gl } = useThree()
+  const isRotatingCamera = useRef(false)
 
   const controllerRef = useRef<any>(null)
   const wasNearSlot = useRef(false)
@@ -195,8 +197,40 @@ const Player = ({ user, isPaused = false, onSlotNearby }: { user: any; isPaused?
   useEffect(() => {
     if (isPaused) {
       keysPressed.current = {}
+      isRotatingCamera.current = false
     }
   }, [isPaused])
+
+  // Right-button drag rotates the camera around the player. Keep the browser
+  // context menu disabled only on the game canvas.
+  useEffect(() => {
+    const canvas = gl.domElement
+    const preventContextMenu = (event: MouseEvent) => event.preventDefault()
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button !== 2 || isPaused) return
+      event.preventDefault()
+      isRotatingCamera.current = true
+    }
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isRotatingCamera.current || isPaused) return
+      controlsRef.current?.rotateCameraBy(event.movementX)
+    }
+    const stopRotating = () => {
+      isRotatingCamera.current = false
+    }
+
+    canvas.addEventListener('contextmenu', preventContextMenu)
+    canvas.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', stopRotating)
+
+    return () => {
+      canvas.removeEventListener('contextmenu', preventContextMenu)
+      canvas.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', stopRotating)
+    }
+  }, [gl, isPaused])
 
   const joinedRef = useRef(false)
   const { addPlayer, updatePlayerPosition, setPlayersInRoom, removePlayer, cleanupInactivePlayers } = usePlayers()
