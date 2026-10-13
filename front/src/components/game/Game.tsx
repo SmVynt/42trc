@@ -8,18 +8,16 @@ import { GameConfig } from './utils/gameConfig'
 import World from './Environment'
 import { useAuth } from '../../hooks/useAuth'
 import FishingOverlay from './fishing/FishingOverlay'
-import InventoryOverlay from './InventoryOverlay'
+import type { PlayerPosition } from './Player'
 
-const Game = ({ isOverlayOpen = false, onSlotNearby }: { isOverlayOpen?: boolean; onSlotNearby?: (nearby: boolean) => void }) => {
+const Game = ({ isOverlayOpen = false, onSlotNearby, onPositionChange }: { isOverlayOpen?: boolean; onSlotNearby?: (nearby: boolean) => void; onPositionChange?: (position: PlayerPosition) => void }) => {
   const { user } = useAuth()
   const [fishingOpen, setFishingOpen] = useState(false)
-  const [inventoryOpen, setInventoryOpen] = useState(false)
   const [equippedRodId, setEquippedRodId] = useState<number | null>(null)
   useEffect(() => {
   const onKey = (e: KeyboardEvent) => {
     if (e.code === 'KeyF') setFishingOpen((v) => !v)
-    if (e.code === 'KeyI') setInventoryOpen((v) => !v)
-    if (e.code === 'Escape') { setFishingOpen(false); setInventoryOpen(false) }
+    if (e.code === 'Escape') setFishingOpen(false)
   }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -40,7 +38,7 @@ const Game = ({ isOverlayOpen = false, onSlotNearby }: { isOverlayOpen?: boolean
         {/* <Lighting /> */}
         {/* <Physics debug> */}
         <Physics>
-          <Player user={user} isPaused={isOverlayOpen} onSlotNearby={onSlotNearby} />
+          <Player user={user} isPaused={isOverlayOpen} onSlotNearby={onSlotNearby} onPositionChange={onPositionChange} />
           <World />
         </Physics>
         <OtherPlayers />
@@ -63,13 +61,6 @@ const Game = ({ isOverlayOpen = false, onSlotNearby }: { isOverlayOpen?: boolean
     </button>
     
     {fishingOpen && <FishingOverlay  equippedRodId={equippedRodId} onClose={() => setFishingOpen(false)} />}
-    {inventoryOpen && (
-        <InventoryOverlay
-          equippedRodId={equippedRodId}
-          onEquip={setEquippedRodId}
-          onClose={() => setInventoryOpen(false)}
-        />
-      )}
     </>
   )
 }
