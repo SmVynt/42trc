@@ -25,8 +25,9 @@ interface Rod {
 // Base handling — rod.control scales lift/gravity
 const BASE_GRAVITY = 0.00012
 const BASE_LIFT = 0.0002
-
-type Status = 'loading' | 'no-rod' | 'playing' | 'caught' | 'lost'
+const BITE_WINDOW_MS = 900
+ 
+type Status = 'loading' | 'no-rod' | 'casting' | 'bite' | 'playing' | 'caught' | 'lost'
 
 const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
   const [status, setStatus] = useState<Status>('loading')
@@ -39,6 +40,7 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
   const fishTarget = useRef(0.5)
   const progress = useRef(0.4)
   const holding = useRef(false)
+  const spaceConsumed = useRef(false)
   const raf = useRef<number>(0)
 
   // Values pulled from the chosen rod + cast fish
@@ -50,6 +52,7 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
   const catchRate = useRef(0.35)
 
   const [render, setRender] = useState({ bar: 0.5, fish: 0.5, prog: 0.4 })
+  const [biteLeft, setBiteLeft] = useState(1)
 
   useEffect(() => {
     fishingActive.current = true
@@ -82,17 +85,62 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
             escapeRate.current = data.escapeRate
             barPos.current = 0.5; barVel.current = 0
             fishPos.current = 0.5; progress.current = 0.4
-            setStatus('playing')
+            setStatus('casting')
           })
       })
       .catch((e) => { if (!cancelled) { console.error('fishing failed:', e); setStatus('lost') } })
     return () => { cancelled = true }
   }, [equippedRodId])
 
+  // Casting: wait a random time, then the fish bites
+  useEffect(() => {
+    if (status !== 'casting') return
+    const delay = 1500 + Math.random() * 2500 // 1.5–4s
+    const t = setTimeout(() => setStatus('bite'), delay)
+    return () => clearTimeout(t)
+  }, [status])
+ 
+  // Bite: player must press Space within the window, else it gets away
+  // Bite: a countdown bar shrinks over the window; hit Space before it empties
+  useEffect(() => {
+    if (status !== 'bite') return
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault()
+        spaceConsumed.current = true
+        holding.current = false
+        barPos.current = 0.5; barVel.current = 0
+        fishPos.current = 0.5; progress.current = 0.4
+        setStatus('playing')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+
+    const start = performance.now()
+    let id = 0
+    const tick = (now: number) => {
+      const left = 1 - (now - start) / BITE_WINDOW_MS
+      if (left <= 0) { setBiteLeft(0); setStatus('lost'); return }
+      setBiteLeft(left)
+      id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+
+    return () => { window.removeEventListener('keydown', onKey); cancelAnimationFrame(id) }
+  }, [status])
+
   // Hold input: space or mouse
   useEffect(() => {
-    const down = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); holding.current = true } }
-    const up = (e: KeyboardEvent) => { if (e.code === 'Space') holding.current = false }
+    const down = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        if (spaceConsumed.current) return // ignore pressed space from the bite window
+        e.preventDefault(); holding.current = true
+      }
+    }
+    const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space') { holding.current = false; spaceConsumed.current = false }
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
@@ -161,6 +209,32 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
 
         {status === 'loading' && (
           <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.7 }}>Loading…</div>
+        )}
+
+        {status === 'no-rod' && (
+          <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.85 }}>
+            Equip a rod in your inventory (I) first.
+          </div>
+        )}
+
+        {status === 'casting' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ fontSize: 48 }}>🎣</div>
+            <p style={{ fontSize: 16, marginTop: 12, opacity: 0.8 }}>Waiting for a bite…</p>
+          </div>
+        )}
+ 
+        {status === 'bite' && (
+          <div style={{ padding: '30px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Press SPACE!</p>
+            <div style={{ position: 'relative', width: '100%', height: 18, background: '#0a2e44', borderRadius: 9, overflow: 'hidden' }}>
+              <div style={{
+                position: 'absolute', top: 0, bottom: 0, left: 0,
+                width: `${biteLeft * 100}%`,
+                background: biteLeft > 0.35 ? '#4cd17a' : '#f45b5b',
+              }} />
+            </div>
+          </div>
         )}
 
         {status === 'playing' && (
