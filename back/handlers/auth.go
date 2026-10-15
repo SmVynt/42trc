@@ -32,6 +32,7 @@ func userResponse(u models.User) gin.H {
 		"equippedHat":     u.EquippedHat,
 		"equippedGlasses": u.EquippedGlasses,
 		"equippedFace":    u.EquippedFace,
+		"equippedRodId":   u.EquippedRodID,
 		"ownedItems":      u.OwnedItems,
 		"stats": gin.H{
 			"gamesPlayed": u.GamesPlayed,
