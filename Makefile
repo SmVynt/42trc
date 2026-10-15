@@ -114,12 +114,12 @@ test: backend-test game-test
 check: backend-test game-test frontend-check compose-config
 
 dev: check-env stop
-	@printf '%b\n' "$(GREEN)Starting development stack on http://localhost:$(HTTP_PORT)...$(RESET)"
 	@TRC_TARGET=$(TARGET_DEV) HTTP_PORT=$(HTTP_PORT) FRONT_CONTAINER_PORT=$(FRONT_PORT) BACKEND_PORT=$(BACK_PORT) GAME_PORT=$(GAME_PORT) $(COMPOSE) up -d --build
+	@printf '%b\n' "$(GREEN)Site is running. Link: http://localhost:$(HTTP_PORT)$(RESET)"
 
 dev-prod: check-env stop
-	@printf '%b\n' "$(GREEN)Starting production frontend stack on http://localhost:$(HTTP_PORT)...$(RESET)"
 	@TRC_TARGET=$(TARGET_PROD) HTTP_PORT=$(HTTP_PORT) FRONT_CONTAINER_PORT=80 BACKEND_PORT=$(BACK_PORT) GAME_PORT=$(GAME_PORT) $(COMPOSE) up -d --build
+	@printf '%b\n' "$(GREEN)Site is running. Link: http://localhost:$(HTTP_PORT)$(RESET)"
 
 docker-build: check-env
 	@TRC_TARGET=$(TARGET_PROD) FRONT_CONTAINER_PORT=80 BACKEND_PORT=$(BACK_PORT) GAME_PORT=$(GAME_PORT) $(COMPOSE) build
