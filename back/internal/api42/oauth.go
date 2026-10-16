@@ -7,12 +7,17 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const BaseURL = "https://api.intra.42.fr"
 const maxRetries = 5
+
+const defaultAPIConcurrency = 8
+const defaultAPIRequestsPerSecond = 2
 
 var httpClient = &http.Client{
 	Timeout: 60 * time.Second,
@@ -109,8 +114,12 @@ func FetchMe(ctx context.Context, accessToken string) (*Profile, error) {
 
 // Client talks to the 42 Intra API using an app (client_credentials) token
 type Client struct {
-	token     string
-	expiresAt time.Time
+	token           string
+	expiresAt       time.Time
+	workers         int
+	requestInterval time.Duration
+	requestMu       sync.Mutex
+	nextRequest     time.Time
 }
 
 // NewClient fetches an app token (with retries) and returns a ready-to-use client
@@ -165,9 +174,24 @@ func NewClient(ctx context.Context) (*Client, error) {
 			return nil, fmt.Errorf("token request failed (%d): %s", status, msg)
 		}
 
+		workers := defaultAPIConcurrency
+		if raw := os.Getenv("SEED_API_CONCURRENCY"); raw != "" {
+			if parsed, parseErr := strconv.Atoi(raw); parseErr == nil && parsed > 0 && parsed <= 32 {
+				workers = parsed
+			}
+		}
+		requestsPerSecond := defaultAPIRequestsPerSecond
+		if raw := os.Getenv("SEED_API_RATE"); raw != "" {
+			if parsed, parseErr := strconv.Atoi(raw); parseErr == nil && parsed > 0 && parsed <= 20 {
+				requestsPerSecond = parsed
+			}
+		}
+
 		return &Client{
-			token:     data.AccessToken,
-			expiresAt: time.Now().Add(time.Duration(data.ExpiresIn) * time.Second),
+			token:           data.AccessToken,
+			expiresAt:       time.Now().Add(time.Duration(data.ExpiresIn) * time.Second),
+			workers:         workers,
+			requestInterval: time.Second / time.Duration(requestsPerSecond),
 		}, nil
 	}
 
@@ -182,4 +206,28 @@ func (c *Client) Token() string {
 // Expired reports whether the app token is close to expiring
 func (c *Client) Expired() bool {
 	return time.Now().After(c.expiresAt.Add(-30 * time.Second))
+}
+
+// waitForRequest serializes request starts at a safe rate for the Intra API.
+// Worker concurrency controls throughput; this limiter controls burst size.
+func (c *Client) waitForRequest(ctx context.Context) error {
+	c.requestMu.Lock()
+	now := time.Now()
+	scheduled := now
+	if c.nextRequest.After(scheduled) {
+		scheduled = c.nextRequest
+	}
+	c.nextRequest = scheduled.Add(c.requestInterval)
+	c.requestMu.Unlock()
+
+	return wait(ctx, time.Until(scheduled))
+}
+
+func (c *Client) pauseRequests(delay time.Duration) {
+	c.requestMu.Lock()
+	until := time.Now().Add(delay)
+	if c.nextRequest.Before(until) {
+		c.nextRequest = until
+	}
+	c.requestMu.Unlock()
 }

@@ -15,8 +15,11 @@ import (
 )
 
 func main() {
-	// Load environment variables
-	godotenv.Load()
+	// Load the project environment when running from back-game/, then fall
+	// back to the current directory for containerized/local deployments.
+	if err := godotenv.Load("../.env"); err != nil {
+		_ = godotenv.Load()
+	}
 
 	// Database configuration
 	dbHost := os.Getenv("DB_HOST")
