@@ -267,7 +267,12 @@ function StoreCard({ item, active, onSelect }) {
 	)
 }
 
-const StorePage = () => {
+export type StorePageProps = {
+	embedded?: boolean
+	onClose?: () => void
+}
+
+const StorePage = ({ embedded = false, onClose }: StorePageProps = {}) => {
 	const { user, updateUser } = useAuth()
 	const [selectedId, setSelectedId] = useState<string>('hat-01')
 	const [purchaseStatus, setPurchaseStatus] = useState<string>('')
@@ -334,16 +339,17 @@ const StorePage = () => {
 
 	return (
 		<main
+			className='store-page'
 			style={{
 				display: 'grid',
 				gap: 20,
-				minHeight: 'calc(100vh - 160px)',
-				padding: '8px 0 0',
+				minHeight: embedded ? '100%' : 'calc(100vh - 160px)',
+				padding: embedded ? 0 : '8px 0 0',
 				color: '#3a2d27',
 			}}
 		>
 			<header style={{ display: 'grid', gap: 6, alignContent: 'start' }}>
-				<div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 14 }}>
+				<div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
 					<h1 style={{ margin: 0, fontSize: 'clamp(2.2rem, 5vw, 4rem)', letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 0.95 }}>
 						Store
 					</h1>
@@ -366,17 +372,37 @@ const StorePage = () => {
 						<span>{user?.wallet ?? 0}</span>
 						<span style={{ fontWeight: 700, color: '#6b5a50' }}>(coin amount)</span>
 					</div>
+					{onClose && (
+						<button
+							type='button'
+							onClick={onClose}
+							aria-label='Close store'
+							style={{
+								marginLeft: 'auto',
+								padding: '10px 14px',
+								borderRadius: 12,
+								border: '2px solid rgba(58, 45, 39, 0.18)',
+								background: '#fff7ee',
+								color: '#3a2d27',
+								fontWeight: 900,
+								cursor: 'pointer',
+							}}
+						>
+							Close <span aria-hidden='true'>×</span>
+						</button>
+					)}
 				</div>
 			</header>
 
 			<section
+				className='store-layout'
 				style={{
 					display: 'grid',
 					gridTemplateColumns: 'minmax(0, 1.6fr) minmax(320px, 0.95fr)',
 					gap: 18,
 					alignItems: 'stretch',
 					flex: 1,
-					height: 'min(700px, calc(100vh - 220px))',
+					height: embedded ? 'min(700px, calc(100vh - 250px))' : 'min(700px, calc(100vh - 220px))',
 					maxHeight: 700,
 				}}
 			>
