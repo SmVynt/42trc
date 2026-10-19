@@ -38,6 +38,12 @@ func main() {
 		if err := client.SeedLogins(ctx, database.DB, logins, *withStars); err != nil {
 			log.Fatal("seed failed: ", err)
 		}
+		// mark test users as logged in so they appear in /api/users/levels
+		if err := database.DB.Model(&models.User{}).
+			Where("intra IN ? AND last_login_at IS NULL", logins).
+			Update("last_login_at", time.Now()).Error; err != nil {
+			log.Fatal("failed to set last_login_at for test users: ", err)
+		}
 		log.Println("Done.")
 		return
 	}
