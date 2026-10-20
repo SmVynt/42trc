@@ -31,7 +31,7 @@ const GamePage = () => {
         setActiveOverlay((overlay) => overlay === 'inventory' ? null : 'inventory')
       }
 
-      if (event.code === 'KeyF' && !event.repeat && isSlotNearby && !activeOverlay) {
+      if (event.code === 'KeyE' && !event.repeat && isSlotNearby && !activeOverlay) {
         event.preventDefault()
         setActiveOverlay('slot')
       }
@@ -92,7 +92,7 @@ const GamePage = () => {
             >
               <div><strong style={{ color: '#fbbf24' }}>Right-click + drag</strong> to rotate camera</div>
               <div>Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory · <strong style={{ color: '#fbbf24' }}>M</strong> Debug map</div>
-              {isSlotNearby && <div>Press <strong style={{ color: '#fbbf24' }}>F</strong> to gamble</div>}
+              {isSlotNearby && <div>Press <strong style={{ color: '#fbbf24' }}>E</strong> to gamble</div>}
             </div>
           )}
           {isDebugMapOpen && <DebugMap position={playerPosition} onClose={() => setIsDebugMapOpen(false)} />}
