@@ -46,3 +46,24 @@ button,
 input {
   font: inherit;
 }
+
+@media (max-width: 900px) {
+  .store-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .store-layout > article,
+  .store-layout > aside {
+    height: auto !important;
+  }
+
+  .store-layout > article {
+    min-height: 360px !important;
+  }
+
+  .store-layout > aside {
+    min-height: 520px !important;
+  }
+}

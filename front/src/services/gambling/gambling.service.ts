@@ -1,6 +1,6 @@
 import { http } from '../../api/http'
 import { tokenService } from '../../storage/token.service'
-import type { CoinFlipGuess, CoinFlipResponse } from '../../types/gambling'
+import type { CoinFlipGuess, CoinFlipResponse, SlotMachineResponse } from '../../types/gambling'
 
 type CoinFlipRequest = {
   betAmount: number
@@ -21,6 +21,22 @@ export const gamblingService = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
+    })
+  },
+
+  async playSlotMachine(betAmount: number): Promise<SlotMachineResponse> {
+    const token = tokenService.get()
+
+    if (!token) {
+      throw new Error('Missing auth token.')
+    }
+
+    return http<SlotMachineResponse>('/api/gambling/slot', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ betAmount }),
     })
   },
 }

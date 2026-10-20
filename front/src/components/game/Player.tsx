@@ -12,11 +12,18 @@ import bodyModelUrl from '../../assets/models/hero/blob_anim.glb?url'
 import { GameConfig } from './utils/gameConfig'
 import { convertToUnlit } from './utils/unlitMaterial'
 import { fishingActive, inventoryActive } from './fishing/FishingState'
+import { SLOT_MACHINE_INTERACTION_RADIUS, SLOT_MACHINE_POSITION } from './SlotMachine3D'
 
 interface PlayerModelProps {
   user: any
   controlsRef: React.MutableRefObject<CharacterControls | null>
   controllerRef: React.MutableRefObject<any>
+}
+
+export interface PlayerPosition {
+  x: number
+  y: number
+  z: number
 }
 
 const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => {
@@ -71,11 +78,11 @@ const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => 
   const accessories = useMemo(
     () =>
       cloneAccessories([
-        { kind: 'hat', scene: hatScene },
-        { kind: 'glasses', scene: glassesScene },
-        { kind: 'face', scene: faceScene },
+        { kind: 'hat', scene: hatScene, enabled: Boolean(user?.equippedHat) },
+        { kind: 'glasses', scene: glassesScene, enabled: Boolean(user?.equippedGlasses) },
+        { kind: 'face', scene: faceScene, enabled: true },
       ]),
-    [faceScene, glassesScene, hatScene]
+    [faceScene, glassesScene, hatScene, user?.equippedFace, user?.equippedGlasses, user?.equippedHat]
   )
 
   useEffect(() => {
@@ -104,14 +111,18 @@ const PlayerModel = ({ user, controlsRef, controllerRef }: PlayerModelProps) => 
   )
 }
 
-const Player = ({ user }: { user: any }) => {
+const Player = ({ user, isPaused = false, onSlotNearby, onPositionChange }: { user: any; isPaused?: boolean; onSlotNearby?: (nearby: boolean) => void; onPositionChange?: (position: PlayerPosition) => void }) => {
   const keysPressed = useRef<Record<string, boolean>>({})
   const lastMovementSendTime = useRef<number>(0)
   const movementUpdateInterval = 50 // ms (20 updates per second)
   const controlsRef = useRef<CharacterControls | null>(null)
   const { world } = useRapier()
+  const { gl } = useThree()
+  const isRotatingCamera = useRef(false)
 
   const controllerRef = useRef<any>(null)
+  const wasNearSlot = useRef(false)
+  const lastPositionUpdateTime = useRef(0)
 
   // Create the KinematicCharacterController after mount (WASM must be ready)
   useEffect(() => {
@@ -151,6 +162,10 @@ const Player = ({ user }: { user: any }) => {
 
       const code = e.code
 
+      if (isPaused) {
+        return
+      }
+
       // Prevent default for game keys
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'KeyC'].includes(code)) {
         e.preventDefault()
@@ -184,7 +199,45 @@ const Player = ({ user }: { user: any }) => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [isPaused])
+
+  useEffect(() => {
+    if (isPaused) {
+      keysPressed.current = {}
+      isRotatingCamera.current = false
+    }
+  }, [isPaused])
+
+  // Right-button drag rotates the camera around the player. Keep the browser
+  // context menu disabled only on the game canvas.
+  useEffect(() => {
+    const canvas = gl.domElement
+    const preventContextMenu = (event: MouseEvent) => event.preventDefault()
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button !== 2 || isPaused) return
+      event.preventDefault()
+      isRotatingCamera.current = true
+    }
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isRotatingCamera.current || isPaused) return
+      controlsRef.current?.rotateCameraBy(event.movementX)
+    }
+    const stopRotating = () => {
+      isRotatingCamera.current = false
+    }
+
+    canvas.addEventListener('contextmenu', preventContextMenu)
+    canvas.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', stopRotating)
+
+    return () => {
+      canvas.removeEventListener('contextmenu', preventContextMenu)
+      canvas.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', stopRotating)
+    }
+  }, [gl, isPaused])
 
   const joinedRef = useRef(false)
   const { addPlayer, updatePlayerPosition, setPlayersInRoom, removePlayer, cleanupInactivePlayers } = usePlayers()
@@ -264,7 +317,7 @@ const Player = ({ user }: { user: any }) => {
 
   // Game loop - send updates to server
   useFrame((state, delta) => {
-    if (controlsRef.current) {
+    if (!isPaused && controlsRef.current) {
       controlsRef.current.update(delta, keysPressed.current)
 
       // Send movement/heartbeat 20 times per second (every 50ms)
@@ -280,6 +333,23 @@ const Player = ({ user }: { user: any }) => {
         )
       }
     }
+
+    if (controlsRef.current && onSlotNearby) {
+      const position = controlsRef.current.getPosition()
+      const dx = position.x - SLOT_MACHINE_POSITION[0]
+      const dz = position.z - SLOT_MACHINE_POSITION[2]
+      const nearby = Math.hypot(dx, dz) <= SLOT_MACHINE_INTERACTION_RADIUS
+      if (nearby !== wasNearSlot.current) {
+        wasNearSlot.current = nearby
+        onSlotNearby(nearby)
+      }
+    }
+
+    if (controlsRef.current && onPositionChange && state.clock.elapsedTime - lastPositionUpdateTime.current >= 0.1) {
+      lastPositionUpdateTime.current = state.clock.elapsedTime
+      const position = controlsRef.current.getPosition()
+      onPositionChange({ x: position.x, y: position.y, z: position.z })
+    }
   })
 
   // Late game loop - camera updates (priority -1 runs after physics simulation step)
@@ -293,4 +363,3 @@ const Player = ({ user }: { user: any }) => {
 }
 
 export default Player
-

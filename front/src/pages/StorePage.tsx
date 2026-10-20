@@ -139,11 +139,11 @@ function AvatarPreview({ item }) {
 	// Clone and prepare accessories
 	const accessories = useMemo(() => {
 		return cloneAccessories([
-			{ kind: 'hat', scene: hatScene },
-			{ kind: 'glasses', scene: glassesScene },
-			{ kind: 'face', scene: faceScene },
+			{ kind: 'hat', scene: hatScene, enabled: Boolean(currentHatId) },
+			{ kind: 'glasses', scene: glassesScene, enabled: Boolean(currentGlassesId) },
+			{ kind: 'face', scene: faceScene, enabled: true },
 		])
-	}, [hatScene, glassesScene, faceScene])
+	}, [hatScene, glassesScene, faceScene, currentHatId, currentGlassesId, currentFaceId])
 
 	// Attach accessories to bones and convert everything to unlit
 	useEffect(() => {
@@ -267,7 +267,12 @@ function StoreCard({ item, active, onSelect }) {
 	)
 }
 
-const StorePage = () => {
+export type StorePageProps = {
+	embedded?: boolean
+	onClose?: () => void
+}
+
+const StorePage = ({ embedded = false, onClose }: StorePageProps = {}) => {
 	const { user, updateUser } = useAuth()
 	const [selectedId, setSelectedId] = useState<string>('hat-01')
 	const [purchaseStatus, setPurchaseStatus] = useState<string>('')
@@ -290,13 +295,6 @@ const StorePage = () => {
 			user.equippedFace === selectedItem.id
 	}, [user, selectedItem])
 
-	const isSelectedEquipped = useMemo(() => {
-		if (!user) return false
-		return user.equippedHat === selectedItem.id ||
-			user.equippedGlasses === selectedItem.id ||
-			user.equippedFace === selectedItem.id
-	}, [user, selectedItem])
-
 	const handleBuy = async () => {
 		if (!user) {
 			setPurchaseStatus('You must be logged in to make a purchase.')
@@ -315,7 +313,7 @@ const StorePage = () => {
 		try {
 			const res = await authService.buyItem(token, selectedItem.id, selectedItem.category, selectedItem.price)
 			updateUser(res.user)
-			setPurchaseStatus('Purchase successful and equipped!')
+			setPurchaseStatus('Purchase successful. Equip it from Inventory.')
 		} catch (err: any) {
 			setPurchaseStatus(err?.message || 'Failed to complete purchase.')
 		} finally {
@@ -332,18 +330,21 @@ const StorePage = () => {
 		}, {})
 	}, [])
 
+	const purchaseDisabled = buying || !user || isSelectedOwned || user.wallet! < selectedItem.price
+
 	return (
 		<main
+			className='store-page'
 			style={{
 				display: 'grid',
 				gap: 20,
-				minHeight: 'calc(100vh - 160px)',
-				padding: '8px 0 0',
+				minHeight: embedded ? '100%' : 'calc(100vh - 160px)',
+				padding: embedded ? 0 : '8px 0 0',
 				color: '#3a2d27',
 			}}
 		>
 			<header style={{ display: 'grid', gap: 6, alignContent: 'start' }}>
-				<div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 14 }}>
+				<div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
 					<h1 style={{ margin: 0, fontSize: 'clamp(2.2rem, 5vw, 4rem)', letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 0.95 }}>
 						Store
 					</h1>
@@ -366,17 +367,37 @@ const StorePage = () => {
 						<span>{user?.wallet ?? 0}</span>
 						<span style={{ fontWeight: 700, color: '#6b5a50' }}>(coin amount)</span>
 					</div>
+					{onClose && (
+						<button
+							type='button'
+							onClick={onClose}
+							aria-label='Close store'
+							style={{
+								marginLeft: 'auto',
+								padding: '10px 14px',
+								borderRadius: 12,
+								border: '2px solid rgba(58, 45, 39, 0.18)',
+								background: '#fff7ee',
+								color: '#3a2d27',
+								fontWeight: 900,
+								cursor: 'pointer',
+							}}
+						>
+							Close <span aria-hidden='true'>×</span>
+						</button>
+					)}
 				</div>
 			</header>
 
 			<section
+				className='store-layout'
 				style={{
 					display: 'grid',
 					gridTemplateColumns: 'minmax(0, 1.6fr) minmax(320px, 0.95fr)',
 					gap: 18,
 					alignItems: 'stretch',
 					flex: 1,
-					height: 'min(700px, calc(100vh - 220px))',
+					height: embedded ? 'min(700px, calc(100vh - 250px))' : 'min(700px, calc(100vh - 220px))',
 					maxHeight: 700,
 				}}
 			>
@@ -489,21 +510,21 @@ const StorePage = () => {
 							<button
 								type='button'
 								onClick={handleBuy}
-								disabled={buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price)}
+								disabled={purchaseDisabled}
 								style={{
 									padding: '10px 16px',
 									borderRadius: 14,
-									border: (buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price))
+									border: purchaseDisabled
 										? '2px solid #cbd5e1'
 										: isSelectedOwned
 											? '2px solid #059669'
 											: '2px solid #46342b',
-									background: (buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price))
+									background: purchaseDisabled
 										? '#e2e8f0'
 										: isSelectedOwned
 											? '#f0fdf4'
 											: '#f7efe4',
-									color: (buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price))
+									color: purchaseDisabled
 										? '#94a3b8'
 										: isSelectedOwned
 											? '#065f46'
@@ -512,18 +533,16 @@ const StorePage = () => {
 									letterSpacing: '0.08em',
 									textTransform: 'uppercase',
 									boxShadow: '0 10px 24px rgba(52, 36, 26, 0.15)',
-									cursor: (buying || !user || isSelectedEquipped || (!isSelectedOwned && user.wallet! < selectedItem.price))
+									cursor: purchaseDisabled
 										? 'not-allowed'
 										: 'pointer',
 								}}
 							>
 								{buying
 									? 'Buying...'
-									: isSelectedEquipped
-										? 'Equipped'
-										: isSelectedOwned
-											? 'Equip'
-											: 'Buy & Equip'}
+									: isSelectedOwned
+										? 'Owned'
+										: 'Buy'}
 							</button>
 						</div>
 					</div>

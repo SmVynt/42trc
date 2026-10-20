@@ -9,6 +9,7 @@ import glasses01Url from '../../../assets/models/clothes/glasses_01.glb?url'
 import glasses02Url from '../../../assets/models/clothes/glasses_02.glb?url'
 import glasses03Url from '../../../assets/models/clothes/glasses_03.glb?url'
 import face01Url from '../../../assets/models/clothes/_face_01.glb?url'
+import emptyAccessoryUrl from '../../../assets/models/clothes/_placeholder.glb?url'
 
 export const HEAD_BONE_NAME = 'head'
 const HEAD_BONE_FALLBACKS = ['head', 'mixamorig:head', 'mixamorig_head']
@@ -30,6 +31,8 @@ export const COSMETICS_MAP: Record<string, string> = {
   'face-01': face01Url,
 }
 
+export const EMPTY_ACCESSORY_URL = emptyAccessoryUrl
+
 export type PlayerAppearanceSelection = {
   hatUrl: string
   glassesUrl: string
@@ -42,8 +45,8 @@ export const getPlayerAppearanceFromIDs = (
   faceId?: string
 ): PlayerAppearanceSelection => {
   return {
-    hatUrl: COSMETICS_MAP[hatId || ''] || hat01Url,
-    glassesUrl: COSMETICS_MAP[glassesId || ''] || glasses01Url,
+    hatUrl: COSMETICS_MAP[hatId || ''] || EMPTY_ACCESSORY_URL,
+    glassesUrl: COSMETICS_MAP[glassesId || ''] || EMPTY_ACCESSORY_URL,
     faceUrl: COSMETICS_MAP[faceId || ''] || face01Url,
   }
 }
@@ -53,6 +56,7 @@ export type AccessoryKind = 'hat' | 'glasses' | 'face'
 type AccessorySceneInput = {
   kind: AccessoryKind
   scene: THREE.Object3D
+  enabled?: boolean
 }
 
 type AccessoryInstance = {
@@ -72,7 +76,7 @@ export const createRandomPlayerAppearanceSelection = (): PlayerAppearanceSelecti
 })
 
 export const cloneAccessories = (accessoryScenes: AccessorySceneInput[]): AccessoryInstance[] => {
-  return accessoryScenes.map(({ kind, scene }) => ({
+  return accessoryScenes.filter(({ enabled = true }) => enabled).map(({ kind, scene }) => ({
     kind,
     object: scene.clone(true),
   }))
@@ -130,12 +134,8 @@ export const attachAccessoriesToBone = (
   }
 
   const normalizeAccessoryTransform = (kind: AccessoryKind, object: THREE.Object3D, headReference: HeadReference) => {
-    // object.updateMatrixWorld(true)
-
-    // object.scale.setScalar(headReference.size)
+    // Keep the asset-authored transforms used by the original WebFishing models.
 	object.scale.setScalar(100)
-	// console.log(`headReferenceSize=${headReference.size}`)
-	// object.position.addScaledVector(headReference.topLocal, 0)
   }
 
   const attachedObjects: THREE.Object3D[] = []
@@ -150,8 +150,6 @@ export const attachAccessoriesToBone = (
     }
 
     const attachedObject = object.clone(true)
-    // const headReference = resolveHeadReference(attachmentTarget)
-    // normalizeAccessoryTransform(kind, attachedObject, headReference)
 	attachedObject.scale.setScalar(100)
 
     attachedObject.traverse((node) => {

@@ -35,12 +35,13 @@ func GetLevels(db *gorm.DB) gin.HandlerFunc {
 				COALESCE(SUM(p.stars) FILTER (WHERE p.cursus_id = ?), 0) AS stars
 			FROM users u
 			LEFT JOIN user_cursus c
-				ON c.user_id = u.id AND c.grade ILIKE 'cadet'
+				ON c.user_id = u.id AND c.cursus_id = ?
 			LEFT JOIN user_projects p
 				ON p.user_id = u.id
+			WHERE u.last_login_at IS NOT NULL
 			GROUP BY u.id, u.username, u.displayname, c.level
 			ORDER BY c.level DESC NULLS LAST, u.username ASC
-		`, coreCursusID, coreCursusID, coreCursusID).Scan(&rows).Error
+			`, coreCursusID, coreCursusID, coreCursusID, coreCursusID).Scan(&rows).Error
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to load levels."})

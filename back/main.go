@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
 	"github.com/SmVynt/42trc/back/database"
 	"github.com/SmVynt/42trc/back/handlers"
 	"github.com/SmVynt/42trc/back/models"
+	"github.com/SmVynt/42trc/back/services"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -25,6 +27,8 @@ func main() {
 		&models.UserInventory{},
 		&models.Rod{},
 		&models.Fish{},
+		&models.TeamMetadata{},
+		&models.ProjectMetadata{},
 	)
 	if err != nil {
 		log.Fatal("AutoMigrate failed: ", err)
@@ -36,6 +40,8 @@ func main() {
 	if err := handlers.CreateFish(database.DB); err != nil {
 		log.Fatal("create fish failed: ", err)
 	}
+	profileSyncer := services.NewProfileSyncer(database.DB)
+	profileSyncer.Start(context.Background())
 
 	r := gin.Default()
 
@@ -46,15 +52,17 @@ func main() {
 	api := r.Group("/api")
 	{
 		api.GET("/users/levels", handlers.GetLevels(database.DB))
-		api.POST("/auth/oauth/42/callback", handlers.Handle42Callback(database.DB))
+		api.POST("/auth/oauth/42/callback", handlers.Handle42Callback(database.DB, profileSyncer))
 		api.GET("/auth/me", handlers.GetMe(database.DB))
 		api.POST("/auth/test-login", handlers.HandleTestLogin(database.DB))
 		api.GET("/users/:username/clothing", handlers.GetUserClothing(database.DB))
 		api.POST("/users/me/buy-item", handlers.BuyItem(database.DB))
+		api.POST("/users/me/equip-item", handlers.EquipItem(database.DB))
 		api.POST("/gambling/coinflip", handlers.HandleCoinFlip(database.DB))
 		api.POST("/fishing/cast", handlers.CastFish(database.DB))
 		api.GET("/fishing/rods", handlers.GetRods(database.DB))
 		api.POST("/fishing/equip", handlers.EquipRod(database.DB))
+		api.POST("/gambling/slot", handlers.HandleSlotMachine(database.DB))
 	}
 
 	apiV1 := r.Group("/api/v1")

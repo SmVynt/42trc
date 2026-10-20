@@ -7,7 +7,6 @@ export function convertToUnlit(scene: THREE.Object3D, mode: UnlitMode = 'shared'
     scene.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh
-            
             const convertMaterial = (mat: THREE.Material): THREE.Material => {
                 const standardMat = mat as THREE.MeshStandardMaterial
                 
@@ -36,6 +35,7 @@ export function convertToUnlit(scene: THREE.Object3D, mode: UnlitMode = 'shared'
             } else {
                 mesh.material = convertMaterial(mesh.material)
             }
+
         }
     })
 }

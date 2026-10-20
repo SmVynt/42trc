@@ -59,10 +59,12 @@ type ScaleTeam struct {
 }
 
 type Team struct {
+	ID         int         `json:"id"`
 	ScaleTeams []ScaleTeam `json:"scale_teams"`
 }
 
 // Full project (for the exam flag)
 type ProjectDetail struct {
+	ID   int  `json:"id"`
 	Exam bool `json:"exam"`
 }
