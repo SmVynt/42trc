@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // Rod — a fishing rod. Its fields feed directly into the minigame:
 // they set the green-zone size and how the bar handles.
 type Rod struct {
@@ -20,6 +22,14 @@ type Fish struct {
 	Speed      float64 `gorm:"not null" json:"speed"`                   // 0..1, higher = faster
 	EscapeRate float64 `gorm:"not null;default:0.45" json:"escapeRate"` // progress lost/sec when out of zone
 	Rarity     int     `gorm:"not null;default:1" json:"rarity"`
+}
+
+type FishCatch struct {
+	ID       uint      `gorm:"primaryKey" json:"id"`
+	UserID   uint      `gorm:"index;not null" json:"userId"`
+	FishID   uint      `gorm:"index;not null" json:"fishId"`
+	Weight   float64   `gorm:"not null" json:"weight"`
+	CaughtAt time.Time `gorm:"autoCreateTime;index" json:"caughtAt"`
 }
 
 func (Fish) TableName() string { return "fish" }
