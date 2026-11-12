@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -18,6 +19,11 @@ var (
 	pendingCasts   = map[uint]uint{} // userID -> fishID
 	pendingCastsMu sync.Mutex
 )
+
+// fishItemID maps a fish to its inventory item, e.g. "Carp" -> "fish_carp".
+func fishItemID(name string) string {
+	return "fish_" + strings.ToLower(name)
+}
 
 // CastFish picks a random fish weighted by Rarity (higher = more common)
 // and returns it. The pick happens server-side so the client can't choose.
@@ -90,7 +96,7 @@ func CreateRods(db *gorm.DB) error {
 	return nil
 }
 
-// CreateFish inserts the base fish if they don't exist yet.
+// CreateFish inserts the base fish if they don't exist yet
 func CreateFish(db *gorm.DB) error {
 	fish := []models.Fish{
 		{Name: "Carp", Speed: 0.28, EscapeRate: 0.35, Rarity: 5}, // slow, forgiving
@@ -102,7 +108,47 @@ func CreateFish(db *gorm.DB) error {
 			return err
 		}
 	}
+
+	items := []models.Item{
+		{ID: fishItemID("Carp"), Name: "Carp", Category: "fish", IsSellable: true, Price: 5},
+		{ID: fishItemID("Bass"), Name: "Bass", Category: "fish", IsSellable: true, Price: 10},
+		{ID: fishItemID("Pike"), Name: "Pike", Category: "fish", IsSellable: true, Price: 25},
+	}
+	for i := range items {
+		if err := db.Where("id = ?", items[i].ID).FirstOrCreate(&items[i]).Error; err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// addFishToInventory gives the user one fish: new inventory row or quantity +1.
+func addFishToInventory(tx *gorm.DB, userID uint, itemID string) error {
+	var inv models.UserInventory
+	err := tx.Where("user_id = ? AND item_id = ?", userID, itemID).First(&inv).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return createInventoryItem(tx, userID, itemID)
+	}
+	if err != nil {
+		return err
+	}
+	return incrementInventoryItem(tx, inv.ID)
+}
+
+// createInventoryItem adds a new inventory row with quantity 1.
+func createInventoryItem(tx *gorm.DB, userID uint, itemID string) error {
+	return tx.Create(&models.UserInventory{
+		UserID:   userID,
+		ItemID:   itemID,
+		Quantity: 1,
+	}).Error
+}
+
+// incrementInventoryItem adds 1 to an existing inventory row.
+func incrementInventoryItem(tx *gorm.DB, inventoryID uint) error {
+	return tx.Model(&models.UserInventory{}).
+		Where("id = ?", inventoryID).
+		Update("quantity", gorm.Expr("quantity + ?", 1)).Error
 }
 
 // CatchFish saves the user's pending fish (rolled by CastFish) as a catch.
@@ -133,7 +179,15 @@ func CatchFish(db *gorm.DB) gin.HandlerFunc {
 			UserID: user.ID,
 			FishID: fish.ID,
 		}
-		if err := db.Create(&catch).Error; err != nil {
+
+		// Save the catch (leaderboard) and add the fish to the inventory together.
+		err := db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Create(&catch).Error; err != nil {
+				return err
+			}
+			return addFishToInventory(tx, user.ID, fishItemID(fish.Name))
+		})
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save catch."})
 			return
 		}
