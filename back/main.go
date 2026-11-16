@@ -27,6 +27,7 @@ func main() {
 		&models.UserInventory{},
 		&models.Rod{},
 		&models.Fish{},
+		&models.FishCatch{},
 		&models.TeamMetadata{},
 		&models.ProjectMetadata{},
 	)
@@ -63,6 +64,7 @@ func main() {
 		api.GET("/fishing/rods", handlers.GetRods(database.DB))
 		api.POST("/fishing/equip", handlers.EquipRod(database.DB))
 		api.POST("/gambling/slot", handlers.HandleSlotMachine(database.DB))
+		api.POST("/fishing/catch", handlers.CatchFish(database.DB))
 	}
 
 	apiV1 := r.Group("/api/v1")

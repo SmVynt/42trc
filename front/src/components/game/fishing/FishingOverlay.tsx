@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { fishingActive } from './FishingState'
+import { http } from '../../../api/http'
+import { tokenService } from '../../../storage/token.service'
 
 interface FishingOverlayProps {
   equippedRodId: number | null
@@ -30,6 +32,7 @@ const BITE_WINDOW_MS = 900
 type Status = 'loading' | 'no-rod' | 'casting' | 'bite' | 'playing' | 'caught' | 'lost'
 
 const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
+  const token = tokenService.get()
   const [status, setStatus] = useState<Status>('loading')
   const [fish, setFish] = useState<CaughtFish | null>(null)
 
@@ -76,8 +79,10 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
         lift.current = BASE_LIFT * rod.control
         gravity.current = BASE_GRAVITY / rod.control
  
-        return fetch('/api/fishing/cast', { method: 'POST' })
-          .then((r) => r.json())
+        return http<CaughtFish>('/api/fishing/cast', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        })
           .then((data: CaughtFish) => {
             if (cancelled) return
             setFish(data)
@@ -90,7 +95,7 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
       })
       .catch((e) => { if (!cancelled) { console.error('fishing failed:', e); setStatus('lost') } })
     return () => { cancelled = true }
-  }, [equippedRodId])
+  }, [equippedRodId, token])
 
   // Casting: wait a random time, then the fish bites
   useEffect(() => {
@@ -186,6 +191,15 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
     raf.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf.current)
   }, [status])
+
+  // Caught: tell the server to save the fish rolled on cast
+  useEffect(() => {
+    if (status !== 'caught' || !token) return
+    http('/api/fishing/catch', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch((e) => console.error('saving catch failed:', e))
+  }, [status, token])
 
   return (
     <div
