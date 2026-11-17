@@ -8,16 +8,19 @@ import { GameConfig } from './utils/gameConfig'
 import World from './Environment'
 import { useAuth } from '../../hooks/useAuth'
 import FishingOverlay from './fishing/FishingOverlay'
+import LeaderboardOverlay from './LeaderboardOverlay'
 import type { PlayerPosition } from './Player'
 
 const Game = ({ isOverlayOpen = false, onSlotNearby, onPositionChange }: { isOverlayOpen?: boolean; onSlotNearby?: (nearby: boolean) => void; onPositionChange?: (position: PlayerPosition) => void }) => {
   const { user } = useAuth()
   const [fishingOpen, setFishingOpen] = useState(false)
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false)
   const [equippedRodId, setEquippedRodId] = useState<number | null>(null)
   useEffect(() => {
   const onKey = (e: KeyboardEvent) => {
     if (e.code === 'KeyF') setFishingOpen((v) => !v)
-    if (e.code === 'Escape') setFishingOpen(false)
+    if (e.code === 'KeyL') setLeaderboardOpen((v) => !v)
+    if (e.code === 'Escape') { setFishingOpen(false); setLeaderboardOpen(false) }
   }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -61,6 +64,7 @@ const Game = ({ isOverlayOpen = false, onSlotNearby, onPositionChange }: { isOve
     </button>
     
     {fishingOpen && <FishingOverlay  equippedRodId={equippedRodId} onClose={() => setFishingOpen(false)} />}
+    {leaderboardOpen && <LeaderboardOverlay onClose={() => setLeaderboardOpen(false)} />}
     </>
   )
 }
