@@ -22,6 +22,8 @@ type Fish struct {
 	Speed      float64 `gorm:"not null" json:"speed"`                   // 0..1, higher = faster
 	EscapeRate float64 `gorm:"not null;default:0.45" json:"escapeRate"` // progress lost/sec when out of zone
 	Rarity     int     `gorm:"not null;default:1" json:"rarity"`
+	MinWeight  float64 `gorm:"not null;default:0.5" json:"minWeight"` // kg
+	MaxWeight  float64 `gorm:"not null;default:2" json:"maxWeight"`   // kg
 }
 
 type FishCatch struct {

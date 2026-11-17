@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"math"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -99,9 +100,9 @@ func CreateRods(db *gorm.DB) error {
 // CreateFish inserts the base fish if they don't exist yet
 func CreateFish(db *gorm.DB) error {
 	fish := []models.Fish{
-		{Name: "Carp", Speed: 0.28, EscapeRate: 0.35, Rarity: 5}, // slow, forgiving
-		{Name: "Bass", Speed: 0.42, EscapeRate: 0.45, Rarity: 3},
-		{Name: "Pike", Speed: 0.62, EscapeRate: 0.60, Rarity: 1}, // fast, punishing
+		{Name: "Carp", Speed: 0.28, EscapeRate: 0.35, Rarity: 5, MinWeight: 0.5, MaxWeight: 4}, // slow, forgiving
+		{Name: "Bass", Speed: 0.42, EscapeRate: 0.45, Rarity: 3, MinWeight: 0.3, MaxWeight: 3},
+		{Name: "Pike", Speed: 0.62, EscapeRate: 0.60, Rarity: 1, MinWeight: 1.0, MaxWeight: 12}, // fast, punishing
 	}
 	for i := range fish {
 		if err := db.Where("name = ?", fish[i].Name).FirstOrCreate(&fish[i]).Error; err != nil {
@@ -175,9 +176,14 @@ func CatchFish(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Random weight in the fish's range, rounded to 2 decimals (kg).
+		weight := fish.MinWeight + rand.Float64()*(fish.MaxWeight-fish.MinWeight)
+		weight = math.Round(weight*100) / 100
+
 		catch := models.FishCatch{
 			UserID: user.ID,
 			FishID: fish.ID,
+			Weight: weight,
 		}
 
 		// Save the catch (leaderboard) and add the fish to the inventory together.
