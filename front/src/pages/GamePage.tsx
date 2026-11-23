@@ -4,6 +4,7 @@ import Game from '../components/game/Game'
 import InventoryOverlay from '../components/game/InventoryOverlay'
 import StoreOverlay from '../components/game/StoreOverlay'
 import SlotMachineOverlay from '../components/game/SlotMachineOverlay'
+import TicTacToeOverlay from '../components/game/TicTacToeOverlay'
 import { PlayersProvider } from '../context/players.context'
 import { useAuth } from '../hooks/useAuth'
 import DebugMap from '../components/game/DebugMap'
@@ -12,7 +13,7 @@ import { GameConfig } from '../components/game/utils/gameConfig'
 
 const GamePage = () => {
   const { user, loading } = useAuth()
-  const [activeOverlay, setActiveOverlay] = useState<'store' | 'inventory' | 'slot' | null>(null)
+  const [activeOverlay, setActiveOverlay] = useState<'store' | 'inventory' | 'slot' | 'ticTacToe' | null>(null)
   const [isSlotNearby, setIsSlotNearby] = useState(false)
   const [isDebugMapOpen, setIsDebugMapOpen] = useState(false)
   const [playerPosition, setPlayerPosition] = useState<PlayerPosition>({ x: GameConfig.START_X, y: GameConfig.START_Y, z: GameConfig.START_Z })
@@ -41,7 +42,12 @@ const GamePage = () => {
         setIsDebugMapOpen((open) => !open)
       }
 
-      if (event.code === 'Escape') {
+      if (event.code === 'KeyT' && !event.repeat && !activeOverlay) {
+        event.preventDefault()
+        setActiveOverlay('ticTacToe')
+      }
+
+      if (event.code === 'Escape' && activeOverlay !== 'ticTacToe') {
         setActiveOverlay(null)
         setIsDebugMapOpen(false)
       }
@@ -93,12 +99,14 @@ const GamePage = () => {
               <div><strong style={{ color: '#fbbf24' }}>Right-click + drag</strong> to rotate camera</div>
               <div>Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory · <strong style={{ color: '#fbbf24' }}>M</strong> Debug map</div>
               {isSlotNearby && <div>Press <strong style={{ color: '#fbbf24' }}>E</strong> to gamble</div>}
+              <div>Press <strong style={{ color: '#fbbf24' }}>T</strong> Tic-Tac-Toe</div>
             </div>
           )}
           {isDebugMapOpen && <DebugMap position={playerPosition} onClose={() => setIsDebugMapOpen(false)} />}
           {activeOverlay === 'store' && <StoreOverlay onClose={() => setActiveOverlay(null)} />}
           {activeOverlay === 'inventory' && <InventoryOverlay onClose={() => setActiveOverlay(null)} />}
           {activeOverlay === 'slot' && <SlotMachineOverlay onClose={() => setActiveOverlay(null)} />}
+          {activeOverlay === 'ticTacToe' && <TicTacToeOverlay onClose={() => setActiveOverlay(null)} />}
         </section>
       </main>
     </PlayersProvider>

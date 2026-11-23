@@ -1,0 +1,73 @@
+.tic-tac-toe {
+  box-sizing: border-box;
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: 24px;
+  color: #fff7ed;
+  background: linear-gradient(145deg, #29364c, #0f172a);
+  border: 1px solid #a17d36;
+  border-radius: 20px;
+  box-shadow: 0 24px 80px #0009;
+}
+
+.tic-tac-toe::backdrop {
+  background: #020617b8;
+  backdrop-filter: blur(5px);
+}
+
+.tic-tac-toe header,
+.tic-tac-toe footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tic-tac-toe h2 {
+  margin: 0;
+}
+
+.tic-tac-toe header span {
+  color: #fde68a;
+}
+
+.tic-tac-toe footer {
+  margin-top: 20px;
+}
+
+.tic-tac-toe button {
+  padding: 8px 12px;
+  color: inherit;
+  background: #334155;
+  border: 1px solid #64748b;
+  border-radius: 8px;
+}
+
+.tic-tac-toe button:enabled {
+  cursor: pointer;
+}
+
+.tic-tac-toe button:enabled:hover {
+  background: #475569;
+}
+
+.tic-tac-toe-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tic-tac-toe-board button {
+  aspect-ratio: 1;
+  font-size: clamp(1.5rem, 8vw, 3rem);
+  font-weight: 700;
+}
+
+.tic-tac-toe-board button[data-mark='X'] {
+  color: #fcd34d;
+}
+
+.tic-tac-toe-board button[data-mark='O'] {
+  color: #a5f3fc;
+}

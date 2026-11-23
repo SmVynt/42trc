@@ -233,6 +233,12 @@ export const decodeGameMessage = (message: WireMessage | GameMessage): GameMessa
         event,
         playerId: wireMessage.i,
       }
+    case 'player:action':
+      return {
+        event,
+        action: wireMessage.a,
+        payload: wireMessage.d,
+      }
     case 'room:state':
       return {
         event,
