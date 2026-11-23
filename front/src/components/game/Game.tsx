@@ -41,7 +41,7 @@ const Game = ({ isOverlayOpen = false, onSlotNearby, onPositionChange }: { isOve
         {/* <Lighting /> */}
         {/* <Physics debug> */}
         <Physics>
-          <Player user={user} isPaused={isOverlayOpen} onSlotNearby={onSlotNearby} onPositionChange={onPositionChange} />
+          <Player user={user} isPaused={isOverlayOpen || leaderboardOpen} onSlotNearby={onSlotNearby} onPositionChange={onPositionChange} />
           <World />
         </Physics>
         <OtherPlayers />
