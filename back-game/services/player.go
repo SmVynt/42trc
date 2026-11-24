@@ -2,8 +2,14 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/SmVynt/42trc/back-game/models"
 )
@@ -149,4 +155,42 @@ func (ps *PlayerService) GetRoom(roomID int) error {
 
 	var id int
 	return row.Scan(&id)
+}
+
+var sessionClient = &http.Client{Timeout: 3 * time.Second}
+
+func ResolveSessionUser(token string) (int64, error) {
+	base := os.Getenv("AUTH_API_URL")
+	if base == "" {
+		port := os.Getenv("BACKEND_PORT")
+		if port == "" {
+			port = "5000"
+		}
+		base = "http://localhost:" + port
+	}
+	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(base, "/")+"/api/auth/me", nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := sessionClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return 0, errors.New("invalid game session")
+	}
+	var profile struct {
+		User struct {
+			ID int64 `json:"id"`
+		} `json:"user"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&profile); err != nil {
+		return 0, err
+	}
+	if profile.User.ID <= 0 {
+		return 0, errors.New("session has no user ID")
+	}
+	return profile.User.ID, nil
 }

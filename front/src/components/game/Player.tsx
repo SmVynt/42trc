@@ -253,7 +253,7 @@ const Player = ({ user, isPaused = false, onSlotNearby, onPicnicTableNearby, onP
         if (!joinedRef.current) {
           joinedRef.current = true
           const username = user?.intra || user?.username || `player_${gameSocket.playerId?.slice(0, 8)}`
-          gameSocket.joinRoom(1, username)
+          await gameSocket.joinRoom(1, username, user?.id)
         }
       } catch (error) {
         console.error('Failed to connect to game server:', error)

@@ -1,3 +1,4 @@
+import { tokenService } from '../storage/token.service'
 import { decodeGameMessage, encodeGameMessage, type GameMessage } from '../components/game/utils/gameCodec'
 
 // Native WebSocket implementation (no Socket.IO overhead)
@@ -32,6 +33,8 @@ class GameSocket {
   private isConnected = false
   private isConnecting = false
   private roomId = 0
+  private username = ''
+  private readonly guestPlayerId = generatePlayerId()
   playerId = ''
   private listeners: Record<string, Array<(message: GameMessage) => void>> = {}
   private reconnectAttempts = 0
@@ -40,7 +43,7 @@ class GameSocket {
   private messageQueue: Array<ReturnType<typeof encodeGameMessage>> = []
 
   constructor() {
-    this.playerId = generatePlayerId()
+    this.playerId = this.guestPlayerId
   }
 
   connect(): Promise<void> {
@@ -64,13 +67,17 @@ class GameSocket {
         const wsUrl = GAME_SERVER_BASE.replace(/^http/, 'ws') + '/ws'
         console.log('Connecting to:', wsUrl)
 
-        this.ws = new WebSocket(wsUrl)
+        const socket = new WebSocket(wsUrl)
+        this.ws = socket
 
-        this.ws.onopen = () => {
+        socket.onopen = () => {
+          if (this.ws !== socket) return
           console.log('Connected to game server:', this.playerId)
           this.isConnected = true
           this.isConnecting = false
           this.reconnectAttempts = 0
+
+          if (this.roomId) this.sendRoomJoin()
 
           // Send queued messages
           while (this.messageQueue.length > 0) {
@@ -81,7 +88,8 @@ class GameSocket {
           resolve()
         }
 
-        this.ws.onmessage = (event) => {
+        socket.onmessage = (event) => {
+          if (this.ws !== socket) return
           try {
             const message = decodeGameMessage(JSON.parse(event.data))
             const eventName = message.event
@@ -94,13 +102,15 @@ class GameSocket {
           }
         }
 
-        this.ws.onerror = (error) => {
+        socket.onerror = (error) => {
+          if (this.ws !== socket) return
           console.error('WebSocket error:', error)
           this.isConnecting = false
           reject(error)
         }
 
-        this.ws.onclose = () => {
+        socket.onclose = () => {
+          if (this.ws !== socket) return
           console.log('❌ Disconnected from game server')
           this.isConnected = false
           this.isConnecting = false
@@ -109,7 +119,9 @@ class GameSocket {
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++
             console.log(`⏱️ Reconnecting in ${this.reconnectDelay}ms... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-            setTimeout(() => this.connect().catch(console.error), this.reconnectDelay)
+            setTimeout(() => {
+              if (this.ws === socket) this.connect().catch(console.error)
+            }, this.reconnectDelay)
           }
         }
       } catch (error) {
@@ -134,14 +146,30 @@ class GameSocket {
     }
   }
 
-  joinRoom(roomId: number, username: string) {
+  async joinRoom(roomId: number, username: string, userId?: string | number) {
+    const playerId = userId == null ? this.guestPlayerId : `user_${userId}`
+    const changingPlayer = this.roomId !== 0 && this.playerId !== playerId
+    if (changingPlayer) this.disconnect()
+
     this.roomId = roomId
+    this.username = username
+    this.playerId = playerId
+
+    if (changingPlayer) {
+      await this.connect()
+      return
+    }
     console.log(`Joining room ${roomId} as ${username}`)
+    this.sendRoomJoin()
+  }
+
+  private sendRoomJoin() {
     this.send({
       event: 'player:join',
-      roomId,
-      username,
+      roomId: this.roomId,
+      username: this.username,
       playerId: this.playerId,
+      token: tokenService.get() ?? undefined,
     })
   }
 
@@ -190,10 +218,13 @@ class GameSocket {
   }
 
   disconnect() {
-    if (this.ws) {
-      this.ws.close()
-      this.isConnected = false
-    }
+    const socket = this.ws
+    this.ws = null
+    this.isConnected = false
+    this.isConnecting = false
+    this.reconnectAttempts = 0
+    this.messageQueue = []
+    socket?.close()
   }
 }
 

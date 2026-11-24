@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,6 +43,7 @@ type Hub struct {
 
 type Client struct {
 	playerID string
+	userID   int64
 	conn     *websocket.Conn
 	send     chan interface{}
 	hub      *Hub
@@ -231,11 +234,25 @@ func (c *Client) handleMessage(msg map[string]interface{}) {
 }
 
 func (c *Client) handlePlayerJoin(msg map[string]interface{}) {
+	if c.roomID != 0 {
+		return
+	}
 	roomID := asInt(msg["roomId"])
 	username := asString(msg["username"])
 	playerID := asString(msg["playerId"])
 	if playerID == "" {
 		playerID = c.playerID
+	}
+	if token := asString(msg["token"]); token != "" {
+		userID, err := services.ResolveSessionUser(token)
+		if err != nil {
+			log.Printf("Could not verify game session: %v", err)
+			return
+		}
+		c.userID = userID
+		playerID = "user_" + strconv.FormatInt(userID, 10)
+	} else if strings.HasPrefix(playerID, "user_") {
+		return
 	}
 
 	log.Printf("[Handler] Player joining room %d as %s", roomID, username)
@@ -350,6 +367,10 @@ func (c *Client) handleMatchmakingAction(action string) {
 	h.playerConnMu.Lock()
 	defer h.playerConnMu.Unlock()
 
+	if c.userID == 0 {
+		c.sendMatchmakingUpdate("tictactoe:error", "Sign in to play tic-tac-toe.")
+		return
+	}
 	if h.playerConns[c.playerID] != c {
 		return
 	}
@@ -371,11 +392,18 @@ func (c *Client) handleMatchmakingAction(action string) {
 		return
 	}
 
+	xPlayer, oPlayer := h.playerConns[pair.FirstPlayerID], h.playerConns[pair.SecondPlayerID]
+	if rand.Intn(2) == 1 {
+		xPlayer, oPlayer = oPlayer, xPlayer
+	}
+
 	h.nextMatchID++
 	match := services.TicTacToeMatch{
 		ID:        strconv.FormatUint(h.nextMatchID, 10),
-		XPlayerID: pair.FirstPlayerID,
-		OPlayerID: pair.SecondPlayerID,
+		XPlayerID: xPlayer.playerID,
+		XUserID:   xPlayer.userID,
+		OPlayerID: oPlayer.playerID,
+		OUserID:   oPlayer.userID,
 		Turn:      "X",
 		Version:   1,
 	}
@@ -383,8 +411,8 @@ func (c *Client) handleMatchmakingAction(action string) {
 	h.matchByPlayer[match.XPlayerID] = match.ID
 	h.matchByPlayer[match.OPlayerID] = match.ID
 
-	h.playerConns[match.XPlayerID].sendMatchmakingUpdate("tictactoe:matched", match)
-	c.sendMatchmakingUpdate("tictactoe:matched", match)
+	xPlayer.sendMatchmakingUpdate("tictactoe:matched", match)
+	oPlayer.sendMatchmakingUpdate("tictactoe:matched", match)
 }
 
 func (c *Client) sendMatchmakingUpdate(action string, payload interface{}) {

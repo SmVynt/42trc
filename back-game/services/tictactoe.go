@@ -1,11 +1,16 @@
 package services
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 type TicTacToeMatch struct {
 	ID        string    `json:"id"`
 	XPlayerID string    `json:"xPlayerId"`
 	OPlayerID string    `json:"oPlayerId"`
+	XUserID   int64     `json:"-"`
+	OUserID   int64     `json:"-"`
 	Board     [9]string `json:"board"`
 	Turn      string    `json:"turn"`
 	Version   int       `json:"version"`
@@ -49,4 +54,38 @@ func (m *TicTacToeMatch) ApplyMove(playerID string, cell int) error {
 		m.Turn = ""
 	}
 	return nil
+}
+
+func (ps *PlayerService) UpdateTicTacToeStats(ctx context.Context, match TicTacToeMatch) error {
+	tx, err := ps.db.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var winnerID int64
+	switch match.Result {
+	case "X":
+		winnerID = match.XUserID
+	case "O":
+		winnerID = match.OUserID
+	case "draw":
+	default:
+		return errors.New("match has no result")
+	}
+
+	updated, err := tx.Exec(ctx, `
+		UPDATE users
+		SET games_played = games_played + 1,
+		    wins = wins + CASE WHEN id = $3 THEN 1 ELSE 0 END,
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE id IN ($1, $2)
+	`, match.XUserID, match.OUserID, winnerID)
+	if err != nil {
+		return err
+	}
+	if updated.RowsAffected() != 2 {
+		return errors.New("tic-tac-toe requires two existing user profiles")
+	}
+	return tx.Commit(ctx)
 }

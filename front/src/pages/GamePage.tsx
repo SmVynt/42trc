@@ -14,6 +14,7 @@ import { GameConfig } from '../components/game/utils/gameConfig'
 const GamePage = () => {
   const { user, loading } = useAuth()
   const [activeOverlay, setActiveOverlay] = useState<'store' | 'inventory' | 'slot' | 'ticTacToe' | null>(null)
+  const closeTicTacToe = useCallback(() => setActiveOverlay(null), [])
   const [isSlotNearby, setIsSlotNearby] = useState(false)
   const [isPicnicTableNearby, setIsPicnicTableNearby] = useState(false)
   const picnicTableNearby = useRef(false)
@@ -112,7 +113,7 @@ const GamePage = () => {
           {activeOverlay === 'store' && <StoreOverlay onClose={() => setActiveOverlay(null)} />}
           {activeOverlay === 'inventory' && <InventoryOverlay onClose={() => setActiveOverlay(null)} />}
           {activeOverlay === 'slot' && <SlotMachineOverlay onClose={() => setActiveOverlay(null)} />}
-          {activeOverlay === 'ticTacToe' && <TicTacToeOverlay onClose={() => setActiveOverlay(null)} />}
+          {activeOverlay === 'ticTacToe' && <TicTacToeOverlay onClose={closeTicTacToe} />}
         </section>
       </main>
     </PlayersProvider>

@@ -64,6 +64,7 @@ export default function TicTacToeOverlay({ onClose }: { onClose: () => void }) {
           setError('')
           break
         case 'tictactoe:error':
+          setSearching(false)
           setError(String(payload))
           break
       }
@@ -72,6 +73,12 @@ export default function TicTacToeOverlay({ onClose }: { onClose: () => void }) {
     gameSocket.on('player:action', handleAction)
     return () => gameSocket.off('player:action', handleAction)
   }, [])
+
+  useEffect(() => {
+    if (!winner) return
+    const timer = window.setTimeout(onClose, 5000)
+    return () => window.clearTimeout(timer)
+  }, [winner, onClose])
 
   const close = () => {
     if (searching) gameSocket.sendAction('tictactoe:leaveQueue')

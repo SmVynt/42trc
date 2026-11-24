@@ -1,5 +1,11 @@
 package handlers
 
+import (
+	"context"
+	"log"
+	"time"
+)
+
 func (c *Client) handleTicTacToeMove(payload interface{}) {
 	fields, _ := payload.(map[string]interface{})
 	matchID := asString(fields["matchId"])
@@ -34,6 +40,14 @@ func (c *Client) handleTicTacToeMove(payload interface{}) {
 	if match.Result == "" {
 		h.matches[matchID] = match
 	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		err := h.playerSvc.UpdateTicTacToeStats(ctx, match)
+		cancel()
+		if err != nil {
+			log.Printf("Could not update stats for tic-tac-toe match %s: %v", matchID, err)
+			c.sendMatchmakingUpdate("tictactoe:error", "Could not save the result. Try your last move again.")
+			return
+		}
 		delete(h.matches, matchID)
 		delete(h.matchByPlayer, match.XPlayerID)
 		delete(h.matchByPlayer, match.OPlayerID)
