@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"log"
+	"math/rand"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,14 +30,20 @@ type Hub struct {
 	unregister chan *Client
 	mu         sync.RWMutex
 
-	roomManager  *services.RoomManager
-	playerSvc    *services.PlayerService
-	playerConns  map[string]*Client
-	playerConnMu sync.RWMutex
+	roomManager *services.RoomManager
+	matchmaking services.Matchmaking
+	// playerConnMu also protects match registration and lookup.
+	matches       map[string]services.TicTacToeMatch
+	matchByPlayer map[string]string
+	nextMatchID   uint64
+	playerSvc     *services.PlayerService
+	playerConns   map[string]*Client
+	playerConnMu  sync.RWMutex
 }
 
 type Client struct {
 	playerID string
+	userID   int64
 	conn     *websocket.Conn
 	send     chan interface{}
 	hub      *Hub
@@ -43,13 +52,15 @@ type Client struct {
 
 func NewHub(roomManager *services.RoomManager, playerSvc *services.PlayerService) *Hub {
 	return &Hub{
-		clients:     make(map[*Client]bool),
-		broadcast:   make(chan interface{}, 256),
-		register:    make(chan *Client),
-		unregister:  make(chan *Client),
-		roomManager: roomManager,
-		playerSvc:   playerSvc,
-		playerConns: make(map[string]*Client),
+		clients:       make(map[*Client]bool),
+		broadcast:     make(chan interface{}, 256),
+		register:      make(chan *Client),
+		unregister:    make(chan *Client),
+		roomManager:   roomManager,
+		playerSvc:     playerSvc,
+		playerConns:   make(map[string]*Client),
+		matches:       make(map[string]services.TicTacToeMatch),
+		matchByPlayer: make(map[string]string),
 	}
 }
 
@@ -63,6 +74,14 @@ func (h *Hub) Run() {
 			log.Printf("✅ Client registered: %s", client.playerID)
 
 		case client := <-h.unregister:
+			h.playerConnMu.Lock()
+			current := h.playerConns[client.playerID] == client
+			if current {
+				delete(h.playerConns, client.playerID)
+				h.matchmaking.LeaveQueue(client.playerID)
+				h.roomManager.RemovePlayer(client.playerID)
+			}
+
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
@@ -70,18 +89,15 @@ func (h *Hub) Run() {
 			}
 			h.mu.Unlock()
 
-			h.playerConnMu.Lock()
-			delete(h.playerConns, client.playerID)
 			h.playerConnMu.Unlock()
 
-			if client.roomID > 0 {
+			if current && client.roomID > 0 {
 				h.BroadcastToRoom(client.roomID, map[string]interface{}{
 					"event":    "player:left",
 					"playerId": client.playerID,
 				}, client)
 			}
 
-			h.roomManager.RemovePlayer(client.playerID)
 			log.Printf("❌ Client unregistered: %s", client.playerID)
 
 		case msg := <-h.broadcast:
@@ -218,11 +234,25 @@ func (c *Client) handleMessage(msg map[string]interface{}) {
 }
 
 func (c *Client) handlePlayerJoin(msg map[string]interface{}) {
+	if c.roomID != 0 {
+		return
+	}
 	roomID := asInt(msg["roomId"])
 	username := asString(msg["username"])
 	playerID := asString(msg["playerId"])
 	if playerID == "" {
 		playerID = c.playerID
+	}
+	if token := asString(msg["token"]); token != "" {
+		userID, err := services.ResolveSessionUser(token)
+		if err != nil {
+			log.Printf("Could not verify game session: %v", err)
+			return
+		}
+		c.userID = userID
+		playerID = "user_" + strconv.FormatInt(userID, 10)
+	} else if strings.HasPrefix(playerID, "user_") {
+		return
 	}
 
 	log.Printf("[Handler] Player joining room %d as %s", roomID, username)
@@ -310,6 +340,14 @@ func (c *Client) handlePlayerAction(msg map[string]interface{}) {
 	}
 
 	action := asString(msg["action"])
+	switch action {
+	case "tictactoe:joinQueue", "tictactoe:leaveQueue":
+		c.handleMatchmakingAction(action)
+		return
+	case "tictactoe:move":
+		c.handleTicTacToeMove(msg["payload"])
+		return
+	}
 	payload := msg["payload"]
 
 	log.Printf("[Handler] Player action: %s from %s", action, c.playerID)
@@ -322,6 +360,71 @@ func (c *Client) handlePlayerAction(msg map[string]interface{}) {
 		"action":   action,
 		"payload":  payload,
 	}, nil)
+}
+
+func (c *Client) handleMatchmakingAction(action string) {
+	h := c.hub
+	h.playerConnMu.Lock()
+	defer h.playerConnMu.Unlock()
+
+	if c.userID == 0 {
+		c.sendMatchmakingUpdate("tictactoe:error", "Sign in to play tic-tac-toe.")
+		return
+	}
+	if h.playerConns[c.playerID] != c {
+		return
+	}
+
+	if matchID := h.matchByPlayer[c.playerID]; matchID != "" {
+		c.sendMatchmakingUpdate("tictactoe:matched", h.matches[matchID])
+		return
+	}
+
+	if action == "tictactoe:leaveQueue" {
+		h.matchmaking.LeaveQueue(c.playerID)
+		c.sendMatchmakingUpdate("tictactoe:idle", nil)
+		return
+	}
+
+	pair := h.matchmaking.JoinQueue(c.playerID)
+	if pair == nil {
+		c.sendMatchmakingUpdate("tictactoe:waiting", nil)
+		return
+	}
+
+	xPlayer, oPlayer := h.playerConns[pair.FirstPlayerID], h.playerConns[pair.SecondPlayerID]
+	if rand.Intn(2) == 1 {
+		xPlayer, oPlayer = oPlayer, xPlayer
+	}
+
+	h.nextMatchID++
+	match := services.TicTacToeMatch{
+		ID:        strconv.FormatUint(h.nextMatchID, 10),
+		XPlayerID: xPlayer.playerID,
+		XUserID:   xPlayer.userID,
+		OPlayerID: oPlayer.playerID,
+		OUserID:   oPlayer.userID,
+		Turn:      "X",
+		Version:   1,
+	}
+	h.matches[match.ID] = match
+	h.matchByPlayer[match.XPlayerID] = match.ID
+	h.matchByPlayer[match.OPlayerID] = match.ID
+
+	xPlayer.sendMatchmakingUpdate("tictactoe:matched", match)
+	oPlayer.sendMatchmakingUpdate("tictactoe:matched", match)
+}
+
+func (c *Client) sendMatchmakingUpdate(action string, payload interface{}) {
+	select {
+	case c.send <- map[string]interface{}{
+		"event":   "player:action",
+		"action":  action,
+		"payload": payload,
+	}:
+	default:
+		log.Printf("Matchmaking update dropped for %s: send channel full", c.playerID)
+	}
 }
 
 func (c *Client) handleGetRoomState(msg map[string]interface{}) {

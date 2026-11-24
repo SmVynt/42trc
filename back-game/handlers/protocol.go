@@ -27,6 +27,8 @@ type wireMessage struct {
 	M  string          `json:"m,omitempty"`
 	TS int64           `json:"ts,omitempty"`
 	PS []wirePlayer    `json:"ps,omitempty"`
+
+	Token string `json:"token,omitempty"`
 }
 
 var eventToCode = map[string]int{
@@ -101,6 +103,7 @@ func decodeGameMessage(message []byte) (map[string]interface{}, error) {
 		decoded["roomId"] = wire.R
 		decoded["username"] = wire.U
 		decoded["playerId"] = wire.I
+		decoded["token"] = wire.Token
 	case "player:move":
 		decoded["position"] = decodePosition(wire.P)
 		decoded["rotation"] = decodeRotation(wire.O)

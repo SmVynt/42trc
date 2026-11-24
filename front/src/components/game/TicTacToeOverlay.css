@@ -1,0 +1,136 @@
+.tic-tac-toe {
+  box-sizing: border-box;
+  width: min(400px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  padding: clamp(14px, 4vw, 24px);
+  color: #fff5df;
+  background-color: #744425;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 75px, #321a0f88 76px 78px, #f3bd7833 79px 80px),
+    repeating-linear-gradient(1deg, transparent 0 4px, #421e122b 5px, transparent 7px 12px),
+    repeating-linear-gradient(-2deg, #edaa5a18 0 3px, transparent 5px 17px),
+    linear-gradient(102deg, #5a311e, #85512e 47%, #6d3e24);
+  border: 5px solid #4b2a19;
+  border-radius: 5px;
+  box-shadow: 0 12px 28px #24140bb3, inset 0 0 0 1px #e4a46060;
+}
+
+.tic-tac-toe::backdrop {
+  background: #2012099e;
+}
+
+.tic-tac-toe header,
+.tic-tac-toe footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.tic-tac-toe header {
+  justify-content: space-between;
+}
+
+.tic-tac-toe h2 {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: clamp(1.5rem, 6vw, 2rem);
+}
+
+.tic-tac-toe [role='status'] {
+  margin: 0.65rem 0 1rem;
+}
+
+.tic-tac-toe footer {
+  margin-top: 16px;
+}
+
+.tic-tac-toe footer button {
+  padding: 8px 12px;
+  color: #fff5df;
+  background: #51301e;
+  border: 1px solid #b98351;
+  border-radius: 3px;
+  font: inherit;
+}
+
+.tic-tac-toe footer button:first-child:not(:last-child) {
+  color: #352014;
+  background: var(--tile-sand);
+}
+
+.tic-tac-toe button:enabled {
+  cursor: pointer;
+}
+
+.tic-tac-toe button:enabled:hover {
+  filter: brightness(1.12);
+}
+
+.tic-tac-toe button:focus-visible {
+  outline: 2px solid #267b48;
+  outline-offset: -4px;
+}
+
+.tic-tac-toe-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--board-frame);
+  border: 7px solid var(--board-frame);
+  border-radius: 3px;
+  box-shadow: 0 3px 0 #48291e;
+}
+
+.tic-tac-toe-board button {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid var(--board-frame);
+  border-radius: 0;
+  background: var(--tile-sand);
+  font: 900 clamp(2rem, 10vw, 4rem)/1 system-ui, sans-serif;
+  opacity: 1;
+}
+
+.tic-tac-toe-board button:nth-child(odd) {
+  background: var(--tile-light);
+}
+
+.tic-tac-toe [data-mark='X'] {
+  color: var(--mark-x);
+}
+
+.tic-tac-toe [data-mark='O'] {
+  color: var(--mark-o);
+}
+
+.tic-tac-toe-win {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.tic-tac-toe-win line {
+  stroke: currentColor;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  filter: drop-shadow(0 1px 2px #fff5df) drop-shadow(0 -1px 2px #fff5df);
+  animation: tic-tac-toe-win-draw 450ms ease-out both;
+}
+
+@keyframes tic-tac-toe-win-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tic-tac-toe-win line {
+    animation: none;
+  }
+}

@@ -34,6 +34,7 @@ type WireMessage = {
   r?: number
   u?: string
   i?: string
+  token?: string
   p?: [number, number, number]
   o?: [number]
   s?: number
@@ -170,6 +171,7 @@ export const encodeGameMessage = (message: GameMessage): WireMessage => {
         r: message.roomId as number,
         u: message.username as string,
         i: message.playerId as string,
+        token: message.token as string | undefined,
       }
     case 'player:move':
       return {
@@ -232,6 +234,12 @@ export const decodeGameMessage = (message: WireMessage | GameMessage): GameMessa
       return {
         event,
         playerId: wireMessage.i,
+      }
+    case 'player:action':
+      return {
+        event,
+        action: wireMessage.a,
+        payload: wireMessage.d,
       }
     case 'room:state':
       return {
