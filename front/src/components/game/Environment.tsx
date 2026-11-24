@@ -8,7 +8,10 @@ import TreePalmModel from '../../assets/models/envir/tree_palm.glb?url'
 import GrassModel from '../../assets/models/envir/m_grass.glb?url'
 import { SpawnFromJSON } from './utils/SpawnFromJSON'
 import { Water } from './utils/shaders/Water'
-import SlotMachine3D from './SlotMachine3D'
+import SlotMachine3D, { SLOT_MACHINE_INTERACTION_RADIUS, SLOT_MACHINE_POSITION } from './SlotMachine3D'
+import PicnicTable3D from './PicnicTable3D'
+import InteractionRing from './InteractionRing'
+import { PICNIC_TABLE_POSITION, PICNIC_TABLE_RADIUS } from './utils/picnicTable'
 
 const World = () => {
     const { scene } = useGLTF(ground)
@@ -47,6 +50,17 @@ const World = () => {
             />
             <Water position={[0, 0.25, 0]} width={250} height={250} />
             <SlotMachine3D />
+            <PicnicTable3D />
+            <InteractionRing
+                ground={clonedScene}
+                position={PICNIC_TABLE_POSITION}
+                radius={PICNIC_TABLE_RADIUS}
+            />
+            <InteractionRing
+                ground={clonedScene}
+                position={SLOT_MACHINE_POSITION}
+                radius={SLOT_MACHINE_INTERACTION_RADIUS}
+            />
         </>
     )
 }

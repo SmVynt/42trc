@@ -10,7 +10,7 @@ import { useAuth } from '../../hooks/useAuth'
 import FishingOverlay from './fishing/FishingOverlay'
 import type { PlayerPosition } from './Player'
 
-const Game = ({ isOverlayOpen = false, onSlotNearby, onPositionChange }: { isOverlayOpen?: boolean; onSlotNearby?: (nearby: boolean) => void; onPositionChange?: (position: PlayerPosition) => void }) => {
+const Game = ({ isOverlayOpen = false, onSlotNearby, onPicnicTableNearby, onPositionChange }: { isOverlayOpen?: boolean; onSlotNearby?: (nearby: boolean) => void; onPicnicTableNearby?: (nearby: boolean) => void; onPositionChange?: (position: PlayerPosition) => void }) => {
   const { user } = useAuth()
   const [fishingOpen, setFishingOpen] = useState(false)
   const [equippedRodId, setEquippedRodId] = useState<number | null>(null)
@@ -38,7 +38,7 @@ const Game = ({ isOverlayOpen = false, onSlotNearby, onPositionChange }: { isOve
         {/* <Lighting /> */}
         {/* <Physics debug> */}
         <Physics>
-          <Player user={user} isPaused={isOverlayOpen} onSlotNearby={onSlotNearby} onPositionChange={onPositionChange} />
+          <Player user={user} isPaused={isOverlayOpen} onSlotNearby={onSlotNearby} onPicnicTableNearby={onPicnicTableNearby} onPositionChange={onPositionChange} />
           <World />
         </Physics>
         <OtherPlayers />

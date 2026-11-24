@@ -1,6 +1,7 @@
 import treeSpawns from './spawns/trees.json'
 import type { PlayerPosition } from './Player'
 import { SLOT_MACHINE_POSITION } from './SlotMachine3D'
+import { PICNIC_TABLE_POSITION } from './utils/picnicTable'
 
 const MIN_X = -25
 const MAX_X = 60
@@ -83,11 +84,15 @@ const DebugMap = ({ position, onClose }: { position: PlayerPosition; onClose: ()
         })}
         <rect x={toMapX(SLOT_MACHINE_POSITION[0]) - 5} y={toMapY(SLOT_MACHINE_POSITION[2]) - 5} width="10" height="10" fill="#f59e0b" stroke="#451a03" />
         <circle cx={toMapX(position.x)} cy={toMapY(position.z)} r="6" fill="#38bdf8" stroke="white" strokeWidth="2" />
+
+        <rect x={toMapX(PICNIC_TABLE_POSITION[0]) - 5} y={toMapY(PICNIC_TABLE_POSITION[2]) - 5} width="10" height="10" fill="#7a1bb9" stroke="#451a03" />
+        <circle cx={toMapX(position.x)} cy={toMapY(position.z)} r="6" fill="#38bdf8" stroke="white" strokeWidth="2" />
       </svg>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', color: '#cbd5e1', fontSize: 11, margin: '6px 0 10px' }}>
         <span><i style={{ color: '#22c55e' }}>●</i> Trees ({treeSpawns.length})</span>
         <span><i style={{ color: '#f59e0b' }}>■</i> Slot machine</span>
+        <span><i style={{ color: '#7a1bb9' }}>■</i> tic-tac-toe</span>
         <span><i style={{ color: '#38bdf8' }}>●</i> You</span>
       </div>
       <div style={{ borderTop: '1px solid #334155', paddingTop: 9, fontSize: 12, color: '#f8fafc' }}>

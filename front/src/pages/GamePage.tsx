@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import Game from '../components/game/Game'
 import InventoryOverlay from '../components/game/InventoryOverlay'
@@ -15,6 +15,12 @@ const GamePage = () => {
   const { user, loading } = useAuth()
   const [activeOverlay, setActiveOverlay] = useState<'store' | 'inventory' | 'slot' | 'ticTacToe' | null>(null)
   const [isSlotNearby, setIsSlotNearby] = useState(false)
+  const [isPicnicTableNearby, setIsPicnicTableNearby] = useState(false)
+  const picnicTableNearby = useRef(false)
+  const handlePicnicTableNearby = useCallback((nearby: boolean) => {
+    picnicTableNearby.current = nearby
+    setIsPicnicTableNearby(nearby)
+  }, [])
   const [isDebugMapOpen, setIsDebugMapOpen] = useState(false)
   const [playerPosition, setPlayerPosition] = useState<PlayerPosition>({ x: GameConfig.START_X, y: GameConfig.START_Y, z: GameConfig.START_Z })
 
@@ -42,7 +48,7 @@ const GamePage = () => {
         setIsDebugMapOpen((open) => !open)
       }
 
-      if (event.code === 'KeyT' && !event.repeat && !activeOverlay) {
+      if (event.code === 'KeyE' && !event.repeat && picnicTableNearby.current && !activeOverlay) {
         event.preventDefault()
         setActiveOverlay('ticTacToe')
       }
@@ -77,7 +83,7 @@ const GamePage = () => {
     <PlayersProvider>
       <main>
         <section style={{ position: 'relative', width: '100%', height: '100vh', display: 'grid', placeItems: 'center' }}>
-          <Game isOverlayOpen={activeOverlay !== null} onSlotNearby={setIsSlotNearby} onPositionChange={setPlayerPosition} />
+          <Game isOverlayOpen={activeOverlay !== null} onSlotNearby={setIsSlotNearby} onPicnicTableNearby={handlePicnicTableNearby} onPositionChange={setPlayerPosition} />
           {!activeOverlay && (
             <div
               style={{
@@ -98,8 +104,8 @@ const GamePage = () => {
             >
               <div><strong style={{ color: '#fbbf24' }}>Right-click + drag</strong> to rotate camera</div>
               <div>Press <strong style={{ color: '#fbbf24' }}>B</strong> Store · <strong style={{ color: '#fbbf24' }}>I</strong> Inventory · <strong style={{ color: '#fbbf24' }}>M</strong> Debug map</div>
-              {isSlotNearby && <div>Press <strong style={{ color: '#fbbf24' }}>E</strong> to gamble</div>}
-              <div>Press <strong style={{ color: '#fbbf24' }}>T</strong> Tic-Tac-Toe</div>
+              {isSlotNearby && <div>Press <strong style={{ color: '#86efac' }}>E</strong> to gamble</div>}
+              {isPicnicTableNearby && <div>Press <strong style={{ color: '#86efac' }}>E</strong> to play Tic-Tac-Toe</div>}
             </div>
           )}
           {isDebugMapOpen && <DebugMap position={playerPosition} onClose={() => setIsDebugMapOpen(false)} />}
