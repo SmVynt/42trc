@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"math"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -99,9 +100,9 @@ func CreateRods(db *gorm.DB) error {
 // CreateFish inserts the base fish if they don't exist yet
 func CreateFish(db *gorm.DB) error {
 	fish := []models.Fish{
-		{Name: "Carp", Speed: 0.28, EscapeRate: 0.35, Rarity: 5}, // slow, forgiving
-		{Name: "Bass", Speed: 0.42, EscapeRate: 0.45, Rarity: 3},
-		{Name: "Pike", Speed: 0.62, EscapeRate: 0.60, Rarity: 1}, // fast, punishing
+		{Name: "Carp", Speed: 0.28, EscapeRate: 0.35, Rarity: 5, MinWeight: 0.5, MaxWeight: 4}, // slow, forgiving
+		{Name: "Bass", Speed: 0.42, EscapeRate: 0.45, Rarity: 3, MinWeight: 0.3, MaxWeight: 3},
+		{Name: "Pike", Speed: 0.62, EscapeRate: 0.60, Rarity: 1, MinWeight: 1.0, MaxWeight: 12}, // fast, punishing
 	}
 	for i := range fish {
 		if err := db.Where("name = ?", fish[i].Name).FirstOrCreate(&fish[i]).Error; err != nil {
@@ -175,9 +176,14 @@ func CatchFish(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Random weight in the fish's range, rounded to 2 decimals (kg).
+		weight := fish.MinWeight + rand.Float64()*(fish.MaxWeight-fish.MinWeight)
+		weight = math.Round(weight*100) / 100
+
 		catch := models.FishCatch{
 			UserID: user.ID,
 			FishID: fish.ID,
+			Weight: weight,
 		}
 
 		// Save the catch (leaderboard) and add the fish to the inventory together.
@@ -253,5 +259,55 @@ func EquipRod(db *gorm.DB) gin.HandlerFunc {
 			"message": "Rod equipped.",
 			"user":    userResponse(user),
 		})
+	}
+}
+
+// GetLeaderboard returns the top 10 players: by number of catches (type=count)
+// or by their biggest single fish (type=biggest).
+func GetLeaderboard(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		switch c.DefaultQuery("type", "count") {
+		case "count":
+			var rows []struct {
+				Username string `json:"username"`
+				Catches  int    `json:"catches"`
+			}
+			if err := db.Raw(`
+				SELECT u.username, COUNT(*) AS catches
+				FROM fish_catches fc
+				JOIN users u ON u.id = fc.user_id
+				GROUP BY u.username
+				ORDER BY catches DESC
+				LIMIT 10`).Scan(&rows).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to load leaderboard."})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"leaderboard": rows})
+
+		case "biggest":
+			var rows []struct {
+				Username string  `json:"username"`
+				Fish     string  `json:"fish"`
+				Weight   float64 `json:"weight"`
+			}
+			// Best single catch per player, then the top 10 of those.
+			if err := db.Raw(`
+				SELECT username, fish, weight FROM (
+					SELECT DISTINCT ON (fc.user_id) u.username, f.name AS fish, fc.weight
+					FROM fish_catches fc
+					JOIN users u ON u.id = fc.user_id
+					JOIN fish f ON f.id = fc.fish_id
+					ORDER BY fc.user_id, fc.weight DESC
+				) best
+				ORDER BY weight DESC
+				LIMIT 10`).Scan(&rows).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to load leaderboard."})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"leaderboard": rows})
+
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"message": "type must be count or biggest."})
+		}
 	}
 }

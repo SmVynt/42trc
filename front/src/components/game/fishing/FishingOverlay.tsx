@@ -35,6 +35,7 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
   const token = tokenService.get()
   const [status, setStatus] = useState<Status>('loading')
   const [fish, setFish] = useState<CaughtFish | null>(null)
+  const [weight, setWeight] = useState<number | null>(null)
 
   // Game state (refs — change every frame, no re-render)
   const barPos = useRef(0.5)
@@ -195,10 +196,12 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
   // Caught: tell the server to save the fish rolled on cast
   useEffect(() => {
     if (status !== 'caught' || !token) return
-    http('/api/fishing/catch', {
+    http<{ catch: { weight: number } }>('/api/fishing/catch', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-    }).catch((e) => console.error('saving catch failed:', e))
+    })
+      .then((data) => setWeight(data.catch.weight))
+      .catch((e) => console.error('saving catch failed:', e))
   }, [status, token])
 
   return (
@@ -292,7 +295,9 @@ const FishingOverlay = ({ equippedRodId, onClose }: FishingOverlayProps) => {
         {status === 'caught' && (
           <div style={{ textAlign: 'center', padding: '30px 0' }}>
             <div style={{ fontSize: 48 }}>🐟</div>
-            <p style={{ fontSize: 18, margin: '12px 0 0' }}>Caught a {fish?.name}!</p>
+            <p style={{ fontSize: 18, margin: '12px 0 0' }}>
+              Caught a {fish?.name}{weight != null && ` — ${weight.toFixed(2)} kg`}!
+            </p>
           </div>
         )}
         {status === 'lost' && (
